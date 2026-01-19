@@ -1,0 +1,118 @@
+version: "3.9"
+
+name: drawsync
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: drawsync-postgres
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - drawsync_net
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: drawsync-rabbitmq
+    env_file:
+      - ../.env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - drawsync_net
+
+  backend:
+    container_name: drawsync-backend
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: dev
+    env_file:
+      - ../.env
+    command: sh -c "npm install && npm run start:dev"
+    ports:
+      - "${BACKEND_PORT}:3000"
+    volumes:
+      - ../backend:/app
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - drawsync_net
+
+  worker:
+    container_name: drawsync-worker
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: dev
+    env_file:
+      - ../.env
+    command: sh -c "npm install && npm run start:worker"
+    volumes:
+      - ../backend:/app
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - drawsync_net
+
+  frontend:
+    container_name: drawsync-frontend
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      target: dev
+    env_file:
+      - ../.env
+    command: sh -c "npm install && npm run start -- --host 0.0.0.0 --port 4200"
+    ports:
+      - "${FRONTEND_PORT}:4200"
+    volumes:
+      - ../frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - drawsync_net
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  drawsync_net:
+    driver: bridge

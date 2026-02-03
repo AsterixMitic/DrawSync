@@ -1,0 +1,6 @@
+export enum PlayerState {
+  WAITING = 'WAITING',
+  DRAWING = 'DRAWING',
+  GUESSING = 'GUESSING',
+  SPECTATING = 'SPECTATING'
+}

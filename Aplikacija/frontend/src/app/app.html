@@ -1,0 +1,16 @@
+<header class="app-header">
+  <div class="app-brand">
+    <span class="app-title">{{ title }}</span>
+    <span class="app-subtitle">Realtime multiplayer drawing</span>
+  </div>
+  <nav class="app-nav">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      Početna
+    </a>
+    <a routerLink="/lobby" routerLinkActive="active">Lobby</a>
+  </nav>
+</header>
+
+<main class="app-main">
+  <router-outlet></router-outlet>
+</main>

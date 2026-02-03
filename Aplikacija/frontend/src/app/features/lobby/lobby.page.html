@@ -1,0 +1,89 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h2>Lobby</h2>
+      <p>Pronađi sobu ili pokreni novu partiju sa prijateljima.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <mat-card class="panel">
+      <mat-card-header>
+        <mat-card-title>Kreiraj sobu</mat-card-title>
+        <mat-card-subtitle>Postavi nadimak i naziv sobe</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="form" [formGroup]="createRoomForm">
+          <mat-form-field appearance="outline">
+            <mat-label>Nadimak</mat-label>
+            <input matInput formControlName="nickname" placeholder="npr. Mare" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Naziv sobe</mat-label>
+            <input matInput formControlName="roomName" placeholder="npr. Brzi crteži" />
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-flat-button color="primary" type="button" (click)="onCreateRoom()">
+          Kreiraj
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <mat-card class="panel">
+      <mat-card-header>
+        <mat-card-title>Pridruži se sobi</mat-card-title>
+        <mat-card-subtitle>Unesi kod sobe i nadimak</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="form" [formGroup]="joinRoomForm">
+          <mat-form-field appearance="outline">
+            <mat-label>Nadimak</mat-label>
+            <input matInput formControlName="nickname" placeholder="npr. Ana" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Kod sobe</mat-label>
+            <input matInput formControlName="roomCode" placeholder="ABCD" />
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-stroked-button color="primary" type="button" (click)="onJoinRoom()">
+          Pridruži se
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <mat-card class="panel rooms">
+    <mat-card-header>
+      <mat-card-title>Aktivne sobe</mat-card-title>
+      <mat-card-subtitle>Javne partije koje trenutno čekaju igrače</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-list>
+        @for (room of rooms; track room.code) {
+          <mat-list-item>
+            <div class="room-row">
+              <div>
+                <div class="room-code">{{ room.code }}</div>
+                <div class="room-name">{{ room.name }}</div>
+              </div>
+              <div class="room-meta">
+                <mat-chip-set class="room-chips">
+                  <mat-chip>{{ room.players }} igrača</mat-chip>
+                </mat-chip-set>
+                <span class="room-status">{{ room.status }}</span>
+              </div>
+            </div>
+          </mat-list-item>
+        }
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+</section>

@@ -1,0 +1,84 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h2>Soba ABCD</h2>
+      <p>Runda 1 / 5 · Na potezu: Mare</p>
+    </div>
+    <mat-chip-set class="status">
+      <mat-chip color="primary" selected>Reč: _ _ _ _</mat-chip>
+      <mat-chip>00:42</mat-chip>
+    </mat-chip-set>
+  </header>
+
+  <mat-progress-bar mode="determinate" [value]="70"></mat-progress-bar>
+
+  <div class="layout">
+    <mat-card class="canvas-card">
+      <mat-card-header>
+        <mat-card-title>Platno</mat-card-title>
+        <mat-card-subtitle>Crta se u realnom vremenu</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="canvas-placeholder">Canvas will live here</div>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-stroked-button>Očisti</button>
+        <button mat-flat-button color="primary">Spremno</button>
+      </mat-card-actions>
+    </mat-card>
+
+    <div class="side">
+      <mat-card class="panel">
+        <mat-card-header>
+          <mat-card-title>Igrači</mat-card-title>
+          <mat-card-subtitle>Trenutni skor</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list>
+            @for (player of players; track player.name) {
+              <mat-list-item>
+                <div class="player-row">
+                  <div>
+                    <div class="player-name">{{ player.name }}</div>
+                    <div class="player-role">{{ player.role }}</div>
+                  </div>
+                  <mat-chip-set>
+                    <mat-chip>{{ player.score }} pts</mat-chip>
+                  </mat-chip-set>
+                </div>
+              </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="panel chat">
+        <mat-card-header>
+          <mat-card-title>Chat</mat-card-title>
+          <mat-card-subtitle>Pogodi reč pre svih</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chat-messages">
+            @for (message of messages; track message.time + message.author) {
+              <div class="chat-message">
+                <span class="chat-author">{{ message.author }}</span>
+                <span class="chat-text">{{ message.text }}</span>
+                <span class="chat-time">{{ message.time }}</span>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+        <mat-divider></mat-divider>
+        <mat-card-actions>
+          <form class="chat-form" (ngSubmit)="onSendMessage()">
+            <mat-form-field appearance="outline">
+              <mat-label>Poruka</mat-label>
+              <input matInput [formControl]="chatControl" placeholder="Upiši odgovor" />
+            </mat-form-field>
+            <button mat-flat-button color="primary" type="submit">Pošalji</button>
+          </form>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </div>
+</section>

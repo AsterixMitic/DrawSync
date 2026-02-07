@@ -1,23 +1,19 @@
 import { DomainEvent } from "./base.event";
 
-export class RoundStartedEvent extends DomainEvent {
+export class StrokeUndoneEvent extends DomainEvent {
   constructor(
-    public readonly roomId: string,
     public readonly roundId: string,
-    public readonly roundNo: number,
     public readonly drawerId: string,
-    public readonly word: string
+    public readonly strokeId: string | null
   ) {
-    super('ROUND_STARTED');
+    super('STROKE_UNDONE');
   }
 
   toPayload(): Record<string, any> {
     return {
-      roomId: this.roomId,
       roundId: this.roundId,
-      roundNo: this.roundNo,
       drawerId: this.drawerId,
-      word: this.word
+      strokeId: this.strokeId
     };
   }
 }

@@ -1,0 +1,84 @@
+import { Injectable } from '@nestjs/common';
+import { Room, Player } from '../../models';
+import { RoomStatus, PlayerState } from '../../enums';
+import { CreateRoomResult, CreateRoomResultData } from '../../results';
+import { RoomCreatedEvent, PlayerJoinedEvent } from '../../events';
+import { Result } from '../../results/base.result';
+import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
+import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';
+
+export interface CreateRoomInput {
+  userId: string;
+  roundCount?: number;
+  playerMaxCount?: number;
+}
+
+@Injectable()
+export class CreateRoomCommand {
+  constructor(
+    private readonly saveRoomOp: SaveRoomOperation,
+    private readonly savePlayerOp: SavePlayerOperation
+  ) {}
+
+  async execute(input: CreateRoomInput): Promise<CreateRoomResult> {
+    const validationError = this.validate(input);
+    if (validationError) {
+      return Result.fail(validationError, 'VALIDATION_ERROR');
+    }
+
+    const room = new Room({
+      status: RoomStatus.WAITING,
+      roundCount: input.roundCount ?? 3,
+      playerMaxCount: input.playerMaxCount ?? 8
+    });
+
+    const player = new Player({
+      userId: input.userId,
+      roomId: room.id,
+      state: PlayerState.WAITING
+    });
+
+    room.addPlayer(player);
+
+    const events = [
+      new RoomCreatedEvent(
+        room.id,
+        player.playerId,
+        room.roundCount,
+        room.playerMaxCount
+      ),
+      new PlayerJoinedEvent(
+        room.id,
+        player.playerId,
+        player.userId,
+        1
+      )
+    ];
+
+    try {
+      await this.saveRoomOp.execute({ room });
+      await this.savePlayerOp.execute({ player });
+    } catch (error: any) {
+      return Result.fail(`Failed to persist room: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
+    }
+
+    return Result.ok<CreateRoomResultData>({
+      room,
+      player,
+      events
+    });
+  }
+
+  private validate(input: CreateRoomInput): string | null {
+    if (!input.userId || input.userId.trim() === '') {
+      return 'User ID is required';
+    }
+    if (input.roundCount !== undefined && (input.roundCount < 1 || input.roundCount > 10)) {
+      return 'Round count must be between 1 and 10';
+    }
+    if (input.playerMaxCount !== undefined && (input.playerMaxCount < 2 || input.playerMaxCount > 16)) {
+      return 'Player max count must be between 2 and 16';
+    }
+    return null;
+  }
+}

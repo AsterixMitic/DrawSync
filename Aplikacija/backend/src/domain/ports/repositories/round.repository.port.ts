@@ -7,4 +7,5 @@ export interface IRoundRepositoryPort {
   findActiveByRoomId(roomId: string): Promise<Round | null>;
   findByRoomId(roomId: string): Promise<Round[]>;
   getNextSeqForRound(roundId: string): Promise<number>;
+  getUndoTargetStrokeId(roundId: string): Promise<string | null>;
 }

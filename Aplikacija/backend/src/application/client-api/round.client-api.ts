@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RoundDomainApi } from '../../domain/api';
 import { CompleteRoundResult, StartRoundResult } from '../../domain/results';
-import { IEventPublisherPort } from '../../domain/ports';
+import type { IEventPublisherPort } from '../../domain/ports';
 
 export interface StartRoundRequest {
   roomId: string;

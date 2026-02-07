@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { StrokeDomainApi } from '../../domain/api';
 import { ApplyStrokeResult, ClearCanvasResult, UndoStrokeResult } from '../../domain/results';
-import { IEventPublisherPort } from '../../domain/ports';
+import type { IEventPublisherPort } from '../../domain/ports';
 
 export interface ApplyStrokeRequest {
   roomId: string;

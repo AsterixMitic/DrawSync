@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RoomDomainApi } from '../../domain/api';
 import { CreateRoomResult, JoinRoomResult, LeaveRoomResult } from '../../domain/results';
-import { IEventPublisherPort } from '../../domain/ports';
+import type { IEventPublisherPort } from '../../domain/ports';
 import { StartGameWorkflow, StartGameResultData } from '../workflows/start-game.workflow';
 import { Result } from '../../domain/results/base.result';
 

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { GuessDomainApi } from '../../domain/api';
 import { SubmitGuessResult } from '../../domain/results';
-import { IEventPublisherPort } from '../../domain/ports';
+import type { IEventPublisherPort } from 'src/domain';
 
 export interface SubmitGuessRequest {
   roundId: string;

@@ -1,13 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Result } from '../../results/base.result';
 import { LeaveRoomResult, LeaveRoomResultData } from '../../results';
-import { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
+import type { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
 import {
   DrawerChangedEvent,
   PlayerLeftEvent,
   RoomDeletedEvent,
   RoomOwnerChangedEvent
 } from '../../events';
+import type { DomainEvent } from '../../events';
 import { RemovePlayerOperation } from '../../../infrastructure/operations/room/remove-player.operation';
 import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
 import { DeleteRoomOperation } from '../../../infrastructure/operations/room/delete-room.operation';
@@ -54,7 +55,7 @@ export class LeaveRoomCommand {
       return Result.fail('Failed to remove player', 'DOMAIN_ERROR');
     }
 
-    const events = [
+    const events: DomainEvent[] = [
       new PlayerLeftEvent(room.id, input.playerId, room.playerCount, wasOwner)
     ];
 

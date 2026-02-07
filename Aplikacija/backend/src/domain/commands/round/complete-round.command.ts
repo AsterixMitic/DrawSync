@@ -3,7 +3,7 @@ import { Result } from '../../results/base.result';
 import { RoomStatus } from '../../enums';
 import { CompleteRoundResult, CompleteRoundResultData } from '../../results';
 import { RoundCompletedEvent } from '../../events';
-import { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
+import type { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
 import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
 import { UpdateRoundStatusOperation } from '../../../infrastructure/operations/round/update-round-status.operation';
 import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';

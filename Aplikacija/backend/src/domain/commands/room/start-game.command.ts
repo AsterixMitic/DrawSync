@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Result } from '../../results/base.result';
 import { StartGameResult, StartGameResultData } from '../../results';
-import { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
+import type { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
 import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
 
 export interface StartGameInput {

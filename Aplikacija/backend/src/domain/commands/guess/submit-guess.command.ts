@@ -3,7 +3,8 @@ import { Guess } from '../../models';
 import { Result } from '../../results/base.result';
 import { SubmitGuessResult, SubmitGuessResultData } from '../../results';
 import { CorrectGuessEvent, GuessSubmittedEvent } from '../../events';
-import { IPlayerRepositoryPort, IRoundRepositoryPort } from '../../ports';
+import type { DomainEvent } from '../../events';
+import type { IPlayerRepositoryPort, IRoundRepositoryPort } from '../../ports';
 import { SaveGuessOperation } from '../../../infrastructure/operations/guess/save-guess.operation';
 import { UpdatePlayerScoreOperation } from '../../../infrastructure/operations/score/update-player-score.operation';
 import { UpdateUserScoreOperation } from '../../../infrastructure/operations/score/update-user-score.operation';
@@ -79,7 +80,7 @@ export class SubmitGuessCommand {
       pointsAwarded = this.calculatePoints(Math.max(correctGuessCount, 0));
     }
 
-    const events = [
+    const events: DomainEvent[] = [
       new GuessSubmittedEvent(
         round.id,
         guess.id,

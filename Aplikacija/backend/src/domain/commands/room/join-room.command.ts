@@ -4,7 +4,7 @@ import { PlayerState, RoomStatus } from '../../enums';
 import { JoinRoomResult, JoinRoomResultData } from '../../results';
 import { PlayerJoinedEvent } from '../../events';
 import { Result } from '../../results/base.result';
-import { IPlayerRepositoryPort, IRoomRepositoryPort } from '../../ports';
+import type { IPlayerRepositoryPort, IRoomRepositoryPort } from '../../ports';
 import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';
 
 export interface JoinRoomInput {

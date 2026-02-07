@@ -4,7 +4,7 @@ import { StrokeEvent } from '../../models';
 import { StrokeUndoneEvent } from '../../events';
 import { Result } from '../../results/base.result';
 import { UndoStrokeResult, UndoStrokeResultData } from '../../results';
-import { IRoundRepositoryPort, ISharedStatePort } from '../../ports';
+import type { IRoundRepositoryPort, ISharedStatePort } from '../../ports';
 import { SaveStrokeEventOperation } from '../../../infrastructure/operations/stroke/save-stroke-event.operation';
 
 export interface UndoStrokeInput {

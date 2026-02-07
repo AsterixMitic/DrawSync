@@ -9,9 +9,24 @@ services:
       - "${NGINX_PORT:-80}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - frontend_dist:/usr/share/nginx/html:ro
     networks:
       - drawsync_net
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: drawsync-frontend-build
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "cp -r /usr/share/nginx/html/. /frontend_dist/"
+    volumes:
+      - frontend_dist:/frontend_dist
+    networks:
+      - drawsync_net
+    restart: "no"
 
   backend:
     build:
@@ -19,7 +34,6 @@ services:
       dockerfile: Dockerfile
     container_name: drawsync-backend
     environment:
-      # only non-secret defaults / wiring (everything else comes from .env)
       NODE_ENV: "${NODE_ENV:-production}"
       PORT: "${BACKEND_PORT:-3000}"
     depends_on:
@@ -29,15 +43,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - drawsync_net
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: drawsync-frontend
     networks:
       - drawsync_net
     restart: unless-stopped
@@ -101,6 +106,7 @@ services:
 volumes:
   drawsync_pgdata:
   drawsync_redisdata:
+  frontend_dist:
 
 networks:
   drawsync_net:

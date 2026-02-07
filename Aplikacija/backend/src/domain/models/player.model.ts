@@ -4,7 +4,7 @@ import { User } from './user.model';
 
 export interface PlayerProps {
   playerId?: string;
-  oddserId: string;
+  userId: string;
   roomId: string;
   score?: number;
   state?: PlayerState;
@@ -22,7 +22,7 @@ export class Player {
   constructor(props: PlayerProps) {
     this._playerId = props.playerId ?? generateUUID();
     //?
-    this._userId = props.user?.id ?? props.oddserId;
+    this._userId = props.userId;
     this._roomId = props.roomId;
     this._score = props.score ?? 0;
     this._state = props.state ?? PlayerState.WAITING;
@@ -31,7 +31,7 @@ export class Player {
 
   // Getters
   get playerId(): string { return this._playerId; }
-  get oddserId(): string { return this._userId; }
+  get userId(): string { return this._userId; }
   get roomId(): string { return this._roomId; }
   get score(): number { return this._score; }
   get state(): PlayerState { return this._state; }

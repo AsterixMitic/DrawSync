@@ -92,7 +92,7 @@ export class Room {
     if (this._status !== RoomStatus.WAITING) {
       throw new InvalidStateError('Room', this._status, RoomStatus.WAITING);
     }
-    if (this._players.some(p => p.oddserId === player.user?.id)) {
+    if (this._players.some(p => p.userId === player.userId)) {
       throw new Error('User already in room');
     }
 
@@ -128,7 +128,7 @@ export class Room {
   }
 
   getPlayerByUserId(userId: string): Player | null {
-    return this._players.find(p => p.oddserId === userId) ?? null;
+    return this._players.find(p => p.userId === userId) ?? null;
   }
 
   startGame(): Round {
@@ -202,5 +202,19 @@ export class Room {
 
   setRounds(rounds: Round[]): void {
     this._rounds = rounds;
+  }
+
+  beginGame(): void {
+    if (this._status !== RoomStatus.WAITING) {
+      throw new InvalidStateError('Room', this._status, RoomStatus.WAITING);
+    }
+    if (this._players.length < 2) {
+      throw new Error('Need at least 2 players to start');
+    }
+    this._status = RoomStatus.IN_PROGRESS;
+  }
+
+  setCurrentRoundId(roundId: string | null): void {
+    this._currentRoundId = roundId;
   }
 }

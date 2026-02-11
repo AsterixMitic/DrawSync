@@ -78,8 +78,9 @@ export class StartRoundCommand {
     ];
 
     try {
-      await this.saveRoomOp.execute({ room });
+      // Save round BEFORE room (circular FK: rooms.current_round_id -> rounds.id)
       await this.saveRoundOp.execute({ round });
+      await this.saveRoomOp.execute({ room });
       for (const player of room.players) {
         await this.savePlayerOp.execute({ player });
       }

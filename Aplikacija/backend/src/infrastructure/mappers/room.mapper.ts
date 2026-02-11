@@ -47,8 +47,8 @@ export class RoomMapper extends BaseMapper<Room, RoomEntity> {
     entity.createdAt = domain.createdAt;
     entity.roundCount = domain.roundCount;
     entity.playerMaxCount = domain.playerMaxCount;
-    entity.roomOwnerId = domain.roomOwnerId;
-    entity.currentRoundId = domain.currentRoundId;
+    entity.roomOwnerId = domain.roomOwnerId || null;
+    entity.currentRoundId = domain.currentRoundId || null;
     return entity;
   }
 }

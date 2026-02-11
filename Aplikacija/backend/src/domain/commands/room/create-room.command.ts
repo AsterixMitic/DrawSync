@@ -64,8 +64,17 @@ export class CreateRoomCommand {
     ];
 
     try {
+      // Save room first WITHOUT owner (circular FK: room -> player -> room)
+      const savedOwnerId = room.roomOwnerId;
+      (room as any)._roomOwnerId = null;
       await this.saveRoomOp.execute({ room });
+
+      // Save the player (now room exists)
       await this.savePlayerOp.execute({ player });
+
+      // Update room with the owner reference
+      (room as any)._roomOwnerId = savedOwnerId;
+      await this.saveRoomOp.execute({ room });
     } catch (error: any) {
       return Result.fail(`Failed to persist room: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
     }

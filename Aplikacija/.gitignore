@@ -81,3 +81,5 @@ jest-results.json
 CLAUDE.md
 *.xml
 *.iml
+.idea
+.claude

@@ -79,3 +79,5 @@ jest-results.json
 *.bak
 
 CLAUDE.md
+*.xml
+*.iml

@@ -4,8 +4,7 @@ import { StrokeEvent } from '../../models';
 import { StrokeUndoneEvent } from '../../events';
 import { Result } from '../../results/base.result';
 import { UndoStrokeResult, UndoStrokeResultData } from '../../results';
-import type { IRoundRepositoryPort, ISharedStatePort } from '../../ports';
-import { SaveStrokeEventOperation } from '../../../infrastructure/operations/stroke/save-stroke-event.operation';
+import type { IRoundRepositoryPort, ISharedStatePort, IStrokeEventRepositoryPort, ISaveStrokeEventOperationPort } from '../../ports';
 
 export interface UndoStrokeInput {
   roomId: string;
@@ -17,9 +16,12 @@ export class UndoStrokeCommand {
   constructor(
     @Inject('IRoundRepositoryPort')
     private readonly roundRepo: IRoundRepositoryPort,
+    @Inject('IStrokeEventRepositoryPort')
+    private readonly strokeEventRepo: IStrokeEventRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    private readonly saveStrokeEventOp: SaveStrokeEventOperation
+    @Inject('ISaveStrokeEventOperationPort')
+    private readonly saveStrokeEventOp: ISaveStrokeEventOperationPort
   ) {}
 
   async execute(input: UndoStrokeInput): Promise<UndoStrokeResult> {
@@ -49,7 +51,7 @@ export class UndoStrokeCommand {
       return Result.fail('Round is not active', 'INVALID_STATE');
     }
 
-    const targetStrokeId = await this.roundRepo.getUndoTargetStrokeId(round.id);
+    const targetStrokeId = await this.computeUndoTarget(round.id);
     if (!targetStrokeId) {
       return Result.fail('No strokes to undo', 'INVALID_STATE');
     }
@@ -77,5 +79,32 @@ export class UndoStrokeCommand {
       undoneStrokeId: targetStrokeId,
       events
     });
+  }
+
+  private async computeUndoTarget(roundId: string): Promise<string | null> {
+    const strokeEvents = await this.strokeEventRepo.findByRoundId(roundId);
+
+    const stack: string[] = [];
+    for (const event of strokeEvents) {
+      switch (event.strokeType) {
+        case StrokeType.DRAW:
+          if (event.strokeId) {
+            stack.push(event.strokeId);
+          }
+          break;
+        case StrokeType.UNDO:
+          if (stack.length > 0) {
+            stack.pop();
+          }
+          break;
+        case StrokeType.CLEAR:
+          stack.length = 0;
+          break;
+        default:
+          break;
+      }
+    }
+
+    return stack.length > 0 ? stack[stack.length - 1] : null;
   }
 }

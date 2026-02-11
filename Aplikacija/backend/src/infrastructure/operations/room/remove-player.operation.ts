@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { IRemovePlayerOperationPort } from '../../../domain/ports';
 import { PlayerEntity } from '../../database/entities';
 
 export interface RemovePlayerInput {
@@ -8,7 +9,7 @@ export interface RemovePlayerInput {
 }
 
 @Injectable()
-export class RemovePlayerOperation {
+export class RemovePlayerOperation implements IRemovePlayerOperationPort {
   constructor(
     @InjectRepository(PlayerEntity)
     private readonly playerRepo: Repository<PlayerEntity>

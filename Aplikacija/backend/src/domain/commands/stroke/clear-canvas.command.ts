@@ -4,8 +4,7 @@ import { StrokeEvent } from '../../models';
 import { CanvasClearedEvent } from '../../events';
 import { Result } from '../../results/base.result';
 import { ClearCanvasResult, ClearCanvasResultData } from '../../results';
-import type { IRoundRepositoryPort, ISharedStatePort } from '../../ports';
-import { SaveStrokeEventOperation } from '../../../infrastructure/operations/stroke/save-stroke-event.operation';
+import type { IRoundRepositoryPort, ISharedStatePort, ISaveStrokeEventOperationPort } from '../../ports';
 
 export interface ClearCanvasInput {
   roomId: string;
@@ -19,7 +18,8 @@ export class ClearCanvasCommand {
     private readonly roundRepo: IRoundRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    private readonly saveStrokeEventOp: SaveStrokeEventOperation
+    @Inject('ISaveStrokeEventOperationPort')
+    private readonly saveStrokeEventOp: ISaveStrokeEventOperationPort
   ) {}
 
   async execute(input: ClearCanvasInput): Promise<ClearCanvasResult> {
@@ -47,6 +47,8 @@ export class ClearCanvasCommand {
     if (!round.isActive) {
       return Result.fail('Round is not active', 'INVALID_STATE');
     }
+
+    round.clearCanvas();
 
     const seq = await this.roundRepo.getNextSeqForRound(round.id);
     const strokeEvent = new StrokeEvent({

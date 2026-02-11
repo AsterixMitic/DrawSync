@@ -4,10 +4,13 @@ import { Result } from '../../results/base.result';
 import { SubmitGuessResult, SubmitGuessResultData } from '../../results';
 import { CorrectGuessEvent, GuessSubmittedEvent } from '../../events';
 import type { DomainEvent } from '../../events';
-import type { IPlayerRepositoryPort, IRoundRepositoryPort } from '../../ports';
-import { SaveGuessOperation } from '../../../infrastructure/operations/guess/save-guess.operation';
-import { UpdatePlayerScoreOperation } from '../../../infrastructure/operations/score/update-player-score.operation';
-import { UpdateUserScoreOperation } from '../../../infrastructure/operations/score/update-user-score.operation';
+import type {
+  IPlayerRepositoryPort,
+  IRoundRepositoryPort,
+  ISaveGuessOperationPort,
+  IUpdatePlayerScoreOperationPort,
+  IUpdateUserScoreOperationPort
+} from '../../ports';
 
 export interface SubmitGuessInput {
   roundId: string;
@@ -22,9 +25,12 @@ export class SubmitGuessCommand {
     private readonly roundRepo: IRoundRepositoryPort,
     @Inject('IPlayerRepositoryPort')
     private readonly playerRepo: IPlayerRepositoryPort,
-    private readonly saveGuessOp: SaveGuessOperation,
-    private readonly updatePlayerScoreOp: UpdatePlayerScoreOperation,
-    private readonly updateUserScoreOp: UpdateUserScoreOperation
+    @Inject('ISaveGuessOperationPort')
+    private readonly saveGuessOp: ISaveGuessOperationPort,
+    @Inject('IUpdatePlayerScoreOperationPort')
+    private readonly updatePlayerScoreOp: IUpdatePlayerScoreOperationPort,
+    @Inject('IUpdateUserScoreOperationPort')
+    private readonly updateUserScoreOp: IUpdateUserScoreOperationPort
   ) {}
 
   async execute(input: SubmitGuessInput): Promise<SubmitGuessResult> {

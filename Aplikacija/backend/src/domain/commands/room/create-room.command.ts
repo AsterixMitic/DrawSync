@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Room, Player } from '../../models';
 import { RoomStatus, PlayerState } from '../../enums';
 import { CreateRoomResult, CreateRoomResultData } from '../../results';
 import { RoomCreatedEvent, PlayerJoinedEvent } from '../../events';
 import { Result } from '../../results/base.result';
-import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
-import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';
+import type { IUserRepositoryPort, ISaveRoomOperationPort, ISavePlayerOperationPort } from '../../ports';
 
 export interface CreateRoomInput {
   userId: string;
@@ -16,14 +15,23 @@ export interface CreateRoomInput {
 @Injectable()
 export class CreateRoomCommand {
   constructor(
-    private readonly saveRoomOp: SaveRoomOperation,
-    private readonly savePlayerOp: SavePlayerOperation
+    @Inject('IUserRepositoryPort')
+    private readonly userRepo: IUserRepositoryPort,
+    @Inject('ISaveRoomOperationPort')
+    private readonly saveRoomOp: ISaveRoomOperationPort,
+    @Inject('ISavePlayerOperationPort')
+    private readonly savePlayerOp: ISavePlayerOperationPort
   ) {}
 
   async execute(input: CreateRoomInput): Promise<CreateRoomResult> {
     const validationError = this.validate(input);
     if (validationError) {
       return Result.fail(validationError, 'VALIDATION_ERROR');
+    }
+
+    const user = await this.userRepo.findById(input.userId);
+    if (!user) {
+      return Result.fail('User not found', 'NOT_FOUND');
     }
 
     const room = new Room({

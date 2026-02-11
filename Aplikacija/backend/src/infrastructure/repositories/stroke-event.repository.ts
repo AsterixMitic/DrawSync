@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StrokeEvent } from '../../domain/models';
+import { IStrokeEventRepositoryPort } from '../../domain/ports';
 import { StrokeEventEntity } from '../database/entities';
 import { StrokeEventMapper } from '../mappers';
 
 @Injectable()
-export class StrokeEventRepository {
+export class StrokeEventRepository implements IStrokeEventRepositoryPort {
   constructor(
     @InjectRepository(StrokeEventEntity)
     private readonly strokeEventRepo: Repository<StrokeEventEntity>,

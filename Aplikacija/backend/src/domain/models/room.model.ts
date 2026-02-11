@@ -131,18 +131,6 @@ export class Room {
     return this._players.find(p => p.userId === userId) ?? null;
   }
 
-  startGame(): Round {
-    if (this._status !== RoomStatus.WAITING) {
-      throw new InvalidStateError('Room', this._status, RoomStatus.WAITING);
-    }
-    if (this._players.length < 2) {
-      throw new Error('Need at least 2 players to start');
-    }
-
-    this._status = RoomStatus.IN_PROGRESS;
-    return this.createNextRound();
-  }
-
   createNextRound(): Round {
     const roundNo = this._rounds.length + 1;
     if (roundNo > this._roundCount) {

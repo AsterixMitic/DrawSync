@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { IUpdatePlayerScoreOperationPort } from '../../../domain/ports';
 import { PlayerEntity } from '../../database/entities';
 
 export interface UpdatePlayerScoreInput {
@@ -9,7 +10,7 @@ export interface UpdatePlayerScoreInput {
 }
 
 @Injectable()
-export class UpdatePlayerScoreOperation {
+export class UpdatePlayerScoreOperation implements IUpdatePlayerScoreOperationPort {
   constructor(
     @InjectRepository(PlayerEntity)
     private readonly playerRepo: Repository<PlayerEntity>

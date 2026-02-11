@@ -4,8 +4,7 @@ import { PlayerState, RoomStatus } from '../../enums';
 import { JoinRoomResult, JoinRoomResultData } from '../../results';
 import { PlayerJoinedEvent } from '../../events';
 import { Result } from '../../results/base.result';
-import type { IPlayerRepositoryPort, IRoomRepositoryPort } from '../../ports';
-import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';
+import type { IPlayerRepositoryPort, IRoomRepositoryPort, IUserRepositoryPort, ISavePlayerOperationPort } from '../../ports';
 
 export interface JoinRoomInput {
   roomId: string;
@@ -19,7 +18,10 @@ export class JoinRoomCommand {
     private readonly roomRepo: IRoomRepositoryPort,
     @Inject('IPlayerRepositoryPort')
     private readonly playerRepo: IPlayerRepositoryPort,
-    private readonly savePlayerOp: SavePlayerOperation
+    @Inject('IUserRepositoryPort')
+    private readonly userRepo: IUserRepositoryPort,
+    @Inject('ISavePlayerOperationPort')
+    private readonly savePlayerOp: ISavePlayerOperationPort
   ) {}
 
   async execute(input: JoinRoomInput): Promise<JoinRoomResult> {
@@ -28,6 +30,11 @@ export class JoinRoomCommand {
     }
     if (!input.userId) {
       return Result.fail('User ID is required', 'VALIDATION_ERROR');
+    }
+
+    const user = await this.userRepo.findById(input.userId);
+    if (!user) {
+      return Result.fail('User not found', 'NOT_FOUND');
     }
 
     const room = await this.roomRepo.findByIdWithPlayers(input.roomId);

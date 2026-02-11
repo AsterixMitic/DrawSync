@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Stroke } from '../../../domain/models';
+import { ISaveStrokeOperationPort } from '../../../domain/ports';
 import { StrokeEntity } from '../../database/entities';
 import { StrokeMapper } from '../../mappers';
 
@@ -10,7 +11,7 @@ export interface SaveStrokeInput {
 }
 
 @Injectable()
-export class SaveStrokeOperation {
+export class SaveStrokeOperation implements ISaveStrokeOperationPort {
   constructor(
     @InjectRepository(StrokeEntity)
     private readonly strokeRepo: Repository<StrokeEntity>,

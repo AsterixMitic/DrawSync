@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Guess } from '../../../domain/models';
+import { ISaveGuessOperationPort } from '../../../domain/ports';
 import { GuessEntity } from '../../database/entities';
 import { GuessMapper } from '../../mappers';
 
@@ -10,7 +11,7 @@ export interface SaveGuessInput {
 }
 
 @Injectable()
-export class SaveGuessOperation {
+export class SaveGuessOperation implements ISaveGuessOperationPort {
   constructor(
     @InjectRepository(GuessEntity)
     private readonly guessRepo: Repository<GuessEntity>,

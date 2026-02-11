@@ -21,7 +21,6 @@ export class Player {
 
   constructor(props: PlayerProps) {
     this._playerId = props.playerId ?? generateUUID();
-    //?
     this._userId = props.userId;
     this._roomId = props.roomId;
     this._score = props.score ?? 0;
@@ -43,14 +42,6 @@ export class Player {
   }
 
   isGuessing(): boolean {
-    return this._state === PlayerState.GUESSING;
-  }
-
-  canDraw(): boolean {
-    return this._state === PlayerState.DRAWING;
-  }
-
-  canGuess(): boolean {
     return this._state === PlayerState.GUESSING;
   }
 

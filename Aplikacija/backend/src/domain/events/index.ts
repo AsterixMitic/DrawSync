@@ -12,3 +12,5 @@ export * from './canvas-cleared.event';
 export * from './stroke-undone.event';
 export * from './guess-submitted.event';
 export * from './correct-guess.event';
+export * from './game-started.event';
+export * from './user-registered.event';

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Round } from '../../../domain/models';
+import { ISaveRoundOperationPort } from '../../../domain/ports';
 import { RoundEntity } from '../../database/entities';
 import { RoundMapper } from '../../mappers';
 
@@ -10,7 +11,7 @@ export interface SaveRoundInput {
 }
 
 @Injectable()
-export class SaveRoundOperation {
+export class SaveRoundOperation implements ISaveRoundOperationPort {
   constructor(
     @InjectRepository(RoundEntity)
     private readonly roundRepo: Repository<RoundEntity>,

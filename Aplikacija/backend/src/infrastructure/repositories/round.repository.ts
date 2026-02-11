@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Round } from '../../domain/models';
-import { RoundStatus, StrokeType } from '../../domain/enums';
+import { RoundStatus } from '../../domain/enums';
 import { IRoundRepositoryPort } from '../../domain/ports';
 import { RoundEntity, StrokeEventEntity } from '../database/entities';
 import { RoundMapper } from '../mappers';
@@ -59,35 +59,5 @@ export class RoundRepository implements IRoundRepositoryPort {
 
     const max = result?.max ? Number(result.max) : 0;
     return max + 1;
-  }
-
-  async getUndoTargetStrokeId(roundId: string): Promise<string | null> {
-    const events = await this.strokeEventRepo.find({
-      where: { roundId },
-      order: { seq: 'ASC' }
-    });
-
-    const stack: string[] = [];
-    for (const event of events) {
-      switch (event.strokeType) {
-        case StrokeType.DRAW:
-          if (event.strokeId) {
-            stack.push(event.strokeId);
-          }
-          break;
-        case StrokeType.UNDO:
-          if (stack.length > 0) {
-            stack.pop();
-          }
-          break;
-        case StrokeType.CLEAR:
-          stack.length = 0;
-          break;
-        default:
-          break;
-      }
-    }
-
-    return stack.length > 0 ? stack[stack.length - 1] : null;
   }
 }

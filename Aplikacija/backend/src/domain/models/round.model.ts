@@ -117,7 +117,11 @@ export class Round {
     if (this._status !== RoundStatus.ACTIVE) {
       throw new InvalidStateError('Round', this._status, RoundStatus.ACTIVE);
     }
-    
+
+    if (guess.playerId === this._currentDrawerId) {
+      throw new Error('The drawer cannot submit guesses');
+    }
+
     // Check if player already guessed correctly
     if (this._guesses.some(g => g.playerId === guess.playerId && g.isCorrect)) {
       throw new Error('Player already guessed correctly');

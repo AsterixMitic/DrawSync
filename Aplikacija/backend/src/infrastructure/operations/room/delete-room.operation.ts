@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { IDeleteRoomOperationPort } from '../../../domain/ports';
 import { RoomEntity } from '../../database/entities';
 
 export interface DeleteRoomInput {
@@ -8,7 +9,7 @@ export interface DeleteRoomInput {
 }
 
 @Injectable()
-export class DeleteRoomOperation {
+export class DeleteRoomOperation implements IDeleteRoomOperationPort {
   constructor(
     @InjectRepository(RoomEntity)
     private readonly roomRepo: Repository<RoomEntity>

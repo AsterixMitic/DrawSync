@@ -1,7 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Result } from '../../results/base.result';
 import { LeaveRoomResult, LeaveRoomResultData } from '../../results';
-import type { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
+import type {
+  IRoomRepositoryPort,
+  ISharedStatePort,
+  IRemovePlayerOperationPort,
+  ISaveRoomOperationPort,
+  IDeleteRoomOperationPort,
+  ISavePlayerOperationPort
+} from '../../ports';
 import {
   DrawerChangedEvent,
   PlayerLeftEvent,
@@ -9,10 +16,6 @@ import {
   RoomOwnerChangedEvent
 } from '../../events';
 import type { DomainEvent } from '../../events';
-import { RemovePlayerOperation } from '../../../infrastructure/operations/room/remove-player.operation';
-import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
-import { DeleteRoomOperation } from '../../../infrastructure/operations/room/delete-room.operation';
-import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';
 
 export interface LeaveRoomInput {
   roomId: string;
@@ -26,10 +29,14 @@ export class LeaveRoomCommand {
     private readonly roomRepo: IRoomRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    private readonly removePlayerOp: RemovePlayerOperation,
-    private readonly saveRoomOp: SaveRoomOperation,
-    private readonly deleteRoomOp: DeleteRoomOperation,
-    private readonly savePlayerOp: SavePlayerOperation
+    @Inject('IRemovePlayerOperationPort')
+    private readonly removePlayerOp: IRemovePlayerOperationPort,
+    @Inject('ISaveRoomOperationPort')
+    private readonly saveRoomOp: ISaveRoomOperationPort,
+    @Inject('IDeleteRoomOperationPort')
+    private readonly deleteRoomOp: IDeleteRoomOperationPort,
+    @Inject('ISavePlayerOperationPort')
+    private readonly savePlayerOp: ISavePlayerOperationPort
   ) {}
 
   async execute(input: LeaveRoomInput): Promise<LeaveRoomResult> {

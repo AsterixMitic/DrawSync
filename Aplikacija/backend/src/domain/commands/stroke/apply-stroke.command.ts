@@ -5,9 +5,7 @@ import { RoundStatus, StrokeType } from '../../enums';
 import { ApplyStrokeResult, ApplyStrokeResultData } from '../../results';
 import { Result } from '../../results/base.result';
 import { StrokeAppliedEvent } from '../../events';
-import type { IRoundRepositoryPort, ISharedStatePort } from '../../ports';
-import { SaveStrokeOperation } from '../../../infrastructure/operations/stroke/save-stroke.operation';
-import { SaveStrokeEventOperation } from '../../../infrastructure/operations/stroke/save-stroke-event.operation';
+import type { IRoundRepositoryPort, ISharedStatePort, ISaveStrokeOperationPort, ISaveStrokeEventOperationPort } from '../../ports';
 
 export interface ApplyStrokeInput {
   roomId: string;
@@ -23,8 +21,10 @@ export class ApplyStrokeCommand {
     private readonly roundRepo: IRoundRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    private readonly saveStrokeOp: SaveStrokeOperation,
-    private readonly saveStrokeEventOp: SaveStrokeEventOperation
+    @Inject('ISaveStrokeOperationPort')
+    private readonly saveStrokeOp: ISaveStrokeOperationPort,
+    @Inject('ISaveStrokeEventOperationPort')
+    private readonly saveStrokeEventOp: ISaveStrokeEventOperationPort
   ) {}
 
   async execute(input: ApplyStrokeInput): Promise<ApplyStrokeResult> {

@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Result } from '../../results/base.result';
 import { StartGameResult, StartGameResultData } from '../../results';
-import type { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
-import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
+import { GameStartedEvent } from '../../events';
+import type { IRoomRepositoryPort, ISharedStatePort, ISaveRoomOperationPort } from '../../ports';
 
 export interface StartGameInput {
   roomId: string;
@@ -15,7 +15,8 @@ export class StartGameCommand {
     private readonly roomRepo: IRoomRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    private readonly saveRoomOp: SaveRoomOperation
+    @Inject('ISaveRoomOperationPort')
+    private readonly saveRoomOp: ISaveRoomOperationPort
   ) {}
 
   async execute(input: StartGameInput): Promise<StartGameResult> {
@@ -48,9 +49,13 @@ export class StartGameCommand {
       return Result.fail(`Failed to persist room: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
     }
 
+    const events = [
+      new GameStartedEvent(room.id, room.playerCount)
+    ];
+
     return Result.ok<StartGameResultData>({
       room,
-      events: []
+      events
     });
   }
 }

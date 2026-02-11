@@ -3,10 +3,13 @@ import { Result } from '../../results/base.result';
 import { RoomStatus } from '../../enums';
 import { CompleteRoundResult, CompleteRoundResultData } from '../../results';
 import { RoundCompletedEvent } from '../../events';
-import type { IRoomRepositoryPort, ISharedStatePort } from '../../ports';
-import { SaveRoomOperation } from '../../../infrastructure/operations/room/save-room.operation';
-import { UpdateRoundStatusOperation } from '../../../infrastructure/operations/round/update-round-status.operation';
-import { SavePlayerOperation } from '../../../infrastructure/operations/room/save-player.operation';
+import type {
+  IRoomRepositoryPort,
+  ISharedStatePort,
+  ISaveRoomOperationPort,
+  IUpdateRoundStatusOperationPort,
+  ISavePlayerOperationPort
+} from '../../ports';
 
 export interface CompleteRoundInput {
   roomId: string;
@@ -19,9 +22,12 @@ export class CompleteRoundCommand {
     private readonly roomRepo: IRoomRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    private readonly saveRoomOp: SaveRoomOperation,
-    private readonly updateRoundStatusOp: UpdateRoundStatusOperation,
-    private readonly savePlayerOp: SavePlayerOperation
+    @Inject('ISaveRoomOperationPort')
+    private readonly saveRoomOp: ISaveRoomOperationPort,
+    @Inject('IUpdateRoundStatusOperationPort')
+    private readonly updateRoundStatusOp: IUpdateRoundStatusOperationPort,
+    @Inject('ISavePlayerOperationPort')
+    private readonly savePlayerOp: ISavePlayerOperationPort
   ) {}
 
   async execute(input: CompleteRoundInput): Promise<CompleteRoundResult> {

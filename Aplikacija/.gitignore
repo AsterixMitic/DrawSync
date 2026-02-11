@@ -77,3 +77,9 @@ jest-results.json
 *.tmp
 *.swp
 *.bak
+
+CLAUDE.md
+*.xml
+*.iml
+.idea
+.claude

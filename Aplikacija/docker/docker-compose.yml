@@ -41,12 +41,43 @@ services:
       DB_USER: "${POSTGRES_USER}"
       DB_PASSWORD: "${POSTGRES_PASSWORD}"
       DB_NAME: "${POSTGRES_DB}"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      RABBITMQ_HOST: "rabbitmq"
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "${RABBITMQ_USER}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD}"
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
+        condition: service_healthy
+    networks:
+      - drawsync_net
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../worker
+      dockerfile: Dockerfile
+    container_name: drawsync-worker
+    environment:
+      NODE_ENV: "${NODE_ENV:-production}"
+      DB_HOST: "postgres"
+      DB_PORT: "${POSTGRES_PORT:-5432}"
+      DB_USER: "${POSTGRES_USER}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_NAME: "${POSTGRES_DB}"
+      RABBITMQ_HOST: "rabbitmq"
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "${RABBITMQ_USER}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - drawsync_net

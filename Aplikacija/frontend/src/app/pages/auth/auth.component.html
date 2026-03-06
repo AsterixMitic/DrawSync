@@ -1,0 +1,49 @@
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1 class="logo">DrawSync</h1>
+    <p class="subtitle">Draw. Guess. Win.</p>
+
+    <div class="tabs">
+      <button [class.active]="tab === 'login'" (click)="tab = 'login'">Login</button>
+      <button [class.active]="tab === 'register'" (click)="tab = 'register'">Register</button>
+    </div>
+
+    @if (tab === 'login') {
+      <form (ngSubmit)="onLogin()" #f="ngForm">
+        <div class="field">
+          <label class="label">Email</label>
+          <input type="email" [(ngModel)]="login.email" name="email" required placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label class="label">Password</label>
+          <input type="password" [(ngModel)]="login.password" name="password" required placeholder="••••••••" />
+        </div>
+        @if (error) { <p class="error-msg">{{ error }}</p> }
+        <button type="submit" class="btn-primary full" [disabled]="loading">
+          {{ loading ? 'Logging in…' : 'Login' }}
+        </button>
+      </form>
+    }
+
+    @if (tab === 'register') {
+      <form (ngSubmit)="onRegister()" #f="ngForm">
+        <div class="field">
+          <label class="label">Name</label>
+          <input type="text" [(ngModel)]="register.name" name="name" required placeholder="Your name" />
+        </div>
+        <div class="field">
+          <label class="label">Email</label>
+          <input type="email" [(ngModel)]="register.email" name="email" required placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label class="label">Password</label>
+          <input type="password" [(ngModel)]="register.password" name="password" required placeholder="min 6 chars" minlength="6" />
+        </div>
+        @if (error) { <p class="error-msg">{{ error }}</p> }
+        <button type="submit" class="btn-primary full" [disabled]="loading">
+          {{ loading ? 'Registering…' : 'Create Account' }}
+        </button>
+      </form>
+    }
+  </div>
+</div>

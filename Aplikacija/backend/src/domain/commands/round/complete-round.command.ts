@@ -5,14 +5,19 @@ import { CompleteRoundResult, CompleteRoundResultData } from '../../results';
 import { RoundCompletedEvent } from '../../events';
 import type {
   IRoomRepositoryPort,
+  IRoundRepositoryPort,
   ISharedStatePort,
   ISaveRoomOperationPort,
   IUpdateRoundStatusOperationPort,
-  ISavePlayerOperationPort
+  ISavePlayerOperationPort,
+  IUpdatePlayerScoreOperationPort,
+  IUpdateUserScoreOperationPort
 } from '../../ports';
 
 export interface CompleteRoundInput {
   roomId: string;
+  userId?: string;
+  skipOwnerCheck?: boolean;
 }
 
 @Injectable()
@@ -20,6 +25,8 @@ export class CompleteRoundCommand {
   constructor(
     @Inject('IRoomRepositoryPort')
     private readonly roomRepo: IRoomRepositoryPort,
+    @Inject('IRoundRepositoryPort')
+    private readonly roundRepo: IRoundRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
     @Inject('ISaveRoomOperationPort')
@@ -27,7 +34,11 @@ export class CompleteRoundCommand {
     @Inject('IUpdateRoundStatusOperationPort')
     private readonly updateRoundStatusOp: IUpdateRoundStatusOperationPort,
     @Inject('ISavePlayerOperationPort')
-    private readonly savePlayerOp: ISavePlayerOperationPort
+    private readonly savePlayerOp: ISavePlayerOperationPort,
+    @Inject('IUpdatePlayerScoreOperationPort')
+    private readonly updatePlayerScoreOp: IUpdatePlayerScoreOperationPort,
+    @Inject('IUpdateUserScoreOperationPort')
+    private readonly updateUserScoreOp: IUpdateUserScoreOperationPort
   ) {}
 
   async execute(input: CompleteRoundInput): Promise<CompleteRoundResult> {
@@ -38,6 +49,13 @@ export class CompleteRoundCommand {
     const room = await this.roomRepo.findByIdFull(input.roomId);
     if (!room) {
       return Result.fail('Room not found', 'NOT_FOUND');
+    }
+
+    if (!input.skipOwnerCheck) {
+      const callerPlayer = room.players.find(p => p.userId === input.userId);
+      if (!callerPlayer || callerPlayer.playerId !== room.roomOwnerId) {
+        return Result.fail('Only the room owner can complete a round', 'UNAUTHORIZED');
+      }
     }
 
     const activeRound = room.currentRound ?? room.rounds.find((r) => r.isActive) ?? null;
@@ -57,8 +75,14 @@ export class CompleteRoundCommand {
 
     const isGameFinished = room.status === RoomStatus.FINISHED;
 
+    // Compute drawer points based on how many players guessed correctly
+    const roundWithGuesses = await this.roundRepo.findByIdWithGuesses(activeRound.id);
+    const correctGuessCount = roundWithGuesses?.correctGuesses.length ?? 0;
+    const drawerPoints = Math.min(correctGuessCount * 30, 90);
+    const drawer = room.players.find(p => p.playerId === activeRound.currentDrawerId) ?? null;
+
     const events = [
-      new RoundCompletedEvent(room.id, activeRound.id, activeRound.roundNo, isGameFinished)
+      new RoundCompletedEvent(room.id, activeRound.id, activeRound.roundNo, isGameFinished, drawerPoints)
     ];
 
     try {
@@ -67,6 +91,13 @@ export class CompleteRoundCommand {
         status: activeRound.status
       });
       await this.saveRoomOp.execute({ room });
+
+      // Award drawer points if any guessers were correct
+      if (drawerPoints > 0 && drawer) {
+        await this.updatePlayerScoreOp.execute({ playerId: drawer.playerId, points: drawerPoints });
+        await this.updateUserScoreOp.execute({ userId: drawer.userId, points: drawerPoints });
+      }
+
       if (isGameFinished) {
         for (const player of room.players) {
           await this.savePlayerOp.execute({ player });
@@ -87,6 +118,7 @@ export class CompleteRoundCommand {
     return Result.ok<CompleteRoundResultData>({
       round: activeRound,
       roomStatus: room.status,
+      nextDrawerId: room.nextDrawer?.playerId ?? null,
       events
     });
   }

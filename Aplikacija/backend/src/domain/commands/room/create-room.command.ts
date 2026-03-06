@@ -4,7 +4,7 @@ import { RoomStatus, PlayerState } from '../../enums';
 import { CreateRoomResult, CreateRoomResultData } from '../../results';
 import { RoomCreatedEvent, PlayerJoinedEvent } from '../../events';
 import { Result } from '../../results/base.result';
-import type { IUserRepositoryPort, ISaveRoomOperationPort, ISavePlayerOperationPort } from '../../ports';
+import type { IUserRepositoryPort, ICreateRoomOperationPort } from '../../ports';
 
 export interface CreateRoomInput {
   userId: string;
@@ -17,10 +17,8 @@ export class CreateRoomCommand {
   constructor(
     @Inject('IUserRepositoryPort')
     private readonly userRepo: IUserRepositoryPort,
-    @Inject('ISaveRoomOperationPort')
-    private readonly saveRoomOp: ISaveRoomOperationPort,
-    @Inject('ISavePlayerOperationPort')
-    private readonly savePlayerOp: ISavePlayerOperationPort
+    @Inject('ICreateRoomOperationPort')
+    private readonly createRoomOp: ICreateRoomOperationPort
   ) {}
 
   async execute(input: CreateRoomInput): Promise<CreateRoomResult> {
@@ -64,17 +62,7 @@ export class CreateRoomCommand {
     ];
 
     try {
-      // Save room first WITHOUT owner (circular FK: room -> player -> room)
-      const savedOwnerId = room.roomOwnerId;
-      (room as any)._roomOwnerId = null;
-      await this.saveRoomOp.execute({ room });
-
-      // Save the player (now room exists)
-      await this.savePlayerOp.execute({ player });
-
-      // Update room with the owner reference
-      (room as any)._roomOwnerId = savedOwnerId;
-      await this.saveRoomOp.execute({ room });
+      await this.createRoomOp.execute({ room, player });
     } catch (error: any) {
       return Result.fail(`Failed to persist room: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
     }

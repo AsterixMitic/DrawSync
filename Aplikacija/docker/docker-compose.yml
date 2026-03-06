@@ -131,10 +131,11 @@ services:
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
       - "${RABBITMQ_PORT:-5672}:5672"
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 5s
-      timeout: 5s
-      retries: 20
+      timeout: 10s
+      retries: 30
+      start_period: 20s
     networks:
       - drawsync_net
     restart: unless-stopped

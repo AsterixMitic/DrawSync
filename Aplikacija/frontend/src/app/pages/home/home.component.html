@@ -1,0 +1,26 @@
+<div class="home-wrap">
+  <header class="topbar">
+    <span class="logo">DrawSync</span>
+    <div class="user-info">
+      <span class="user-name">{{ auth.user?.name }}</span>
+      <span class="user-score">{{ auth.user?.totalScore ?? 0 }} pts</span>
+      <button class="btn-secondary" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="card join-card">
+      <h2>Join a Room</h2>
+      <p class="hint">Enter the room ID shared by a friend</p>
+      <div class="join-row">
+        <input [(ngModel)]="roomId" placeholder="Room ID" (keydown.enter)="joinRoom()" />
+        <button class="btn-primary" (click)="joinRoom()">Join</button>
+      </div>
+      @if (error) { <p class="error-msg">{{ error }}</p> }
+    </div>
+
+    <div class="divider">or</div>
+
+    <button class="btn-success create-btn" (click)="createRoom()">+ Create New Room</button>
+  </main>
+</div>

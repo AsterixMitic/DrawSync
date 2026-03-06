@@ -80,6 +80,13 @@ export class Room {
     return this._players.find(p => p.state === PlayerState.DRAWING) ?? null;
   }
 
+  get nextDrawer(): Player | null {
+    const nextRoundNo = this._rounds.length + 1;
+    if (nextRoundNo > this._roundCount) return null;
+    const idx = (nextRoundNo - 1) % this._players.length;
+    return this._players[idx] ?? null;
+  }
+
   // Business methods
   canAddPlayer(): boolean {
     return !this.isFull && this._status === RoomStatus.WAITING;
@@ -204,5 +211,9 @@ export class Room {
 
   setCurrentRoundId(roundId: string | null): void {
     this._currentRoundId = roundId;
+  }
+
+  setRoomOwner(ownerId: string | null): void {
+    this._roomOwnerId = ownerId as string;
   }
 }

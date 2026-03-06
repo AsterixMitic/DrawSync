@@ -1,0 +1,149 @@
+<div class="game-wrap" *ngIf="state">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <span class="logo">DrawSync</span>
+    <div class="room-info">
+      <span class="room-id">Room: <code>{{ roomId }}</code></span>
+      @if (state.roundId) {
+        <span class="round-badge">Round {{ state.roundNo }}</span>
+      }
+    </div>
+    <div class="top-actions">
+      @if (state.word) {
+        <span class="word-badge">Word: <strong>{{ state.word }}</strong></span>
+      }
+      <button class="btn-danger" (click)="leaveRoom()">Leave</button>
+    </div>
+  </header>
+
+  <!-- Error toast -->
+  @if (error) {
+    <div class="toast">{{ error }}</div>
+  }
+
+  <!-- FINISHED state -->
+  @if (state.roomStatus === 'FINISHED') {
+    <div class="overlay-panel">
+      <h2>Game Over!</h2>
+      <ul class="scoreboard">
+        @for (p of state.players; track p.playerId) {
+          <li [class.me]="p.playerId === state.myPlayerId">
+            <span>{{ p.userId }}</span>
+            <span class="pts">{{ p.score }} pts</span>
+          </li>
+        }
+      </ul>
+      <button class="btn-primary" (click)="leaveRoom()">Back to Home</button>
+    </div>
+  }
+
+  <!-- WAITING state -->
+  @if (state.roomStatus === 'WAITING') {
+    <div class="overlay-panel">
+      <h2>Waiting for players…</h2>
+      <p class="hint">Share the Room ID with friends</p>
+      <code class="big-room-id">{{ roomId }}</code>
+      <ul class="player-list">
+        @for (p of state.players; track p.playerId) {
+          <li [class.me]="p.playerId === state.myPlayerId">
+            {{ p.userId }}
+            @if (p.playerId === state.roomOwnerId) { <span class="crown">👑</span> }
+          </li>
+        }
+      </ul>
+      @if (isOwner && state.players.length >= 2) {
+        <button class="btn-success" (click)="startGame()">Start Game</button>
+      }
+      @if (isOwner && state.players.length < 2) {
+        <p class="hint">Need at least 2 players to start</p>
+      }
+    </div>
+  }
+
+  <!-- IN_PROGRESS state -->
+  @if (state.roomStatus === 'IN_PROGRESS') {
+    <div class="game-body">
+
+      <!-- Left: players + guesses -->
+      <aside class="sidebar">
+        <div class="panel player-panel">
+          <h3>Players</h3>
+          <ul class="player-list">
+            @for (p of state.players; track p.playerId) {
+              <li [class.me]="p.playerId === state.myPlayerId" [class.drawer]="p.playerId === state.drawerId">
+                <span>{{ p.userId }}</span>
+                <span class="pts">{{ p.score }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <div class="panel chat-panel">
+          <h3>Guesses</h3>
+          <ul class="guess-list">
+            @for (g of state.guesses; track $index) {
+              <li [class.correct]="g.isCorrect">
+                <span class="gp">{{ g.playerId.slice(0,6) }}</span>
+                <span>{{ g.guessText }}</span>
+                @if (g.isCorrect) { <span class="check">✓ +{{ g.pointsAwarded }}</span> }
+              </li>
+            }
+          </ul>
+
+          @if (state.roundId && !isDrawer) {
+            <div class="guess-input">
+              <input [(ngModel)]="guessText" placeholder="Type your guess…" (keydown.enter)="submitGuess()" />
+              <button class="btn-primary" (click)="submitGuess()">↵</button>
+            </div>
+          }
+        </div>
+      </aside>
+
+      <!-- Center: canvas -->
+      <main class="canvas-area">
+        @if (!state.roundId) {
+          <div class="canvas-placeholder">
+            @if (isNextDrawer) {
+              <div>
+                <p>You're up next!</p>
+                <button class="btn-success" (click)="startRound()">Start Round</button>
+              </div>
+            } @else if (state.nextDrawerId) {
+              <p>Waiting for the drawer to start the round…</p>
+            } @else {
+              <p>Game started — waiting for round…</p>
+            }
+          </div>
+        }
+
+        @if (state.roundId) {
+          <div class="canvas-toolbar" *ngIf="isDrawer">
+            <input type="color" [(ngModel)]="color" title="Color" />
+            <input type="range" [(ngModel)]="lineWidth" min="1" max="30" title="Brush size" />
+            <span>{{ lineWidth }}px</span>
+            <button class="btn-secondary" (click)="onClearCanvas()">Clear</button>
+            <span class="hint">Ctrl+Z to undo</span>
+          </div>
+
+          <canvas
+            #canvas
+            width="700"
+            height="480"
+            [class.drawing]="isDrawer"
+            (mousedown)="onMouseDown($event)"
+            (mousemove)="onMouseMove($event)"
+            (mouseup)="onMouseUp()"
+            (mouseleave)="onMouseUp()"
+          ></canvas>
+
+          @if (isOwner) {
+            <button class="btn-secondary end-btn" (click)="completeRound()">End Round</button>
+          }
+        }
+      </main>
+
+    </div>
+  }
+
+</div>

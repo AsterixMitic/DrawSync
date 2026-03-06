@@ -6,6 +6,7 @@ import { StrokeApplicationModule } from '../../application/client-api/stroke.app
 import { GuessApplicationModule } from '../../application/client-api/guess.application.module';
 import { GameGateway } from './game.gateway';
 import { WsAuthGuard } from './ws-auth.guard';
+import { RoundTimerService } from './round-timer.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { WsAuthGuard } from './ws-auth.guard';
     StrokeApplicationModule,
     GuessApplicationModule,
   ],
-  providers: [GameGateway, WsAuthGuard],
+  providers: [GameGateway, WsAuthGuard, RoundTimerService],
   exports: [GameGateway],
 })
 export class WsModule {}

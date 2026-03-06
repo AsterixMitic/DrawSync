@@ -52,7 +52,8 @@ export class JoinRoomCommand {
 
     const existingPlayer = await this.playerRepo.findByRoomAndUser(input.roomId, input.userId);
     if (existingPlayer) {
-      return Result.fail('User is already in this room', 'ALREADY_JOINED');
+      // Idempotent: return existing player so socket can rejoin the channel
+      return Result.ok<JoinRoomResultData>({ room, player: existingPlayer, events: [] });
     }
 
     const player = new Player({

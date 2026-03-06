@@ -1,0 +1,8 @@
+.create-wrap {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+}
+.create-card { width: 100%; max-width: 400px; }
+.create-card h2 { margin-bottom: 6px; }
+.hint { color: #888; font-size: 13px; margin-bottom: 24px; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }

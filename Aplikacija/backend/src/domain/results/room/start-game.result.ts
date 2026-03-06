@@ -4,6 +4,7 @@ import { Result } from "../base.result";
 
 export interface StartGameResultData {
   room: Room;
+  nextDrawerId: string | null;
   events: DomainEvent[];
 }
 

@@ -31,9 +31,26 @@ export class RoomController {
       });
     }
 
+    const { room, player } = result.data!;
     return res.status(HttpStatus.CREATED).json({
       success: true,
-      data: result.data
+      data: {
+        room: {
+          id: room.id,
+          status: room.status,
+          roundCount: room.roundCount,
+          playerMaxCount: room.playerMaxCount,
+          roomOwnerId: room.roomOwnerId,
+          playerCount: room.playerCount,
+        },
+        player: {
+          playerId: player.playerId,
+          userId: player.userId,
+          roomId: player.roomId,
+          score: player.score,
+          state: player.state,
+        },
+      },
     });
   }
 
@@ -56,9 +73,26 @@ export class RoomController {
       });
     }
 
+    const { room, player } = result.data!;
     return res.status(HttpStatus.OK).json({
       success: true,
-      data: result.data
+      data: {
+        room: {
+          id: room.id,
+          status: room.status,
+          roundCount: room.roundCount,
+          playerMaxCount: room.playerMaxCount,
+          roomOwnerId: room.roomOwnerId,
+          playerCount: room.playerCount,
+        },
+        player: {
+          playerId: player.playerId,
+          userId: player.userId,
+          roomId: player.roomId,
+          score: player.score,
+          state: player.state,
+        },
+      },
     });
   }
 
@@ -90,12 +124,13 @@ export class RoomController {
   @Post(':roomId/start')
   async startGame(
     @Param('roomId') roomId: string,
+    @CurrentUser() userId: string,
     @Body() dto: StartGameDto,
     @Res() res: Response
   ) {
     const result = await this.roomClientApi.startGame({
       roomId,
-      words: dto.words
+      userId,
     });
 
     if (result.isFailure()) {

@@ -23,7 +23,8 @@ export interface LeaveRoomRequest {
 
 export interface StartGameRequest {
   roomId: string;
-  words: string[];
+  userId: string;
+  words?: string[];
 }
 
 @Injectable()
@@ -78,7 +79,7 @@ export class RoomClientApi {
   async startGame(request: StartGameRequest): Promise<Result<StartGameResultData>> {
     const result = await this.startGameWorkflow.execute({
       roomId: request.roomId,
-      words: request.words
+      userId: request.userId,
     });
 
     if (result.isSuccess() && result.data?.events?.length) {

@@ -34,15 +34,12 @@ export const RabbitMQProviders: Provider[] = [
       return connection.createChannel({
         json: true,
         setup: async (ch: Channel) => {
-          await ch.assertExchange(RABBITMQ_EXCHANGE, 'topic', {
-            durable: true,
-          });
+          // Main exchange
+          await ch.assertExchange(RABBITMQ_EXCHANGE, 'topic', { durable: true });
+
+          // Main queue — must match worker's declaration exactly (durable only)
           await ch.assertQueue(RABBITMQ_PERSISTENCE_QUEUE, { durable: true });
-          await ch.bindQueue(
-            RABBITMQ_PERSISTENCE_QUEUE,
-            RABBITMQ_EXCHANGE,
-            '#',
-          );
+          await ch.bindQueue(RABBITMQ_PERSISTENCE_QUEUE, RABBITMQ_EXCHANGE, '#');
         },
       });
     },

@@ -6,6 +6,7 @@ import { Result } from "../base.result";
 export interface CompleteRoundResultData {
   round: Round;
   roomStatus: RoomStatus;
+  nextDrawerId: string | null;
   events: DomainEvent[];
 }
 

@@ -5,11 +5,14 @@ import type { IEventPublisherPort } from '../../domain/ports';
 
 export interface StartRoundRequest {
   roomId: string;
-  word: string;
+  word?: string;
+  userId: string;
 }
 
 export interface CompleteRoundRequest {
   roomId: string;
+  userId?: string;
+  skipOwnerCheck?: boolean;
 }
 
 @Injectable()
@@ -23,7 +26,8 @@ export class RoundClientApi {
   async startRound(request: StartRoundRequest): Promise<StartRoundResult> {
     const result = await this.roundDomainApi.startRound({
       roomId: request.roomId,
-      word: request.word
+      word: request.word,
+      userId: request.userId,
     });
 
     if (result.isSuccess() && result.data?.events?.length) {
@@ -35,7 +39,9 @@ export class RoundClientApi {
 
   async completeRound(request: CompleteRoundRequest): Promise<CompleteRoundResult> {
     const result = await this.roundDomainApi.completeRound({
-      roomId: request.roomId
+      roomId: request.roomId,
+      userId: request.userId,
+      skipOwnerCheck: request.skipOwnerCheck,
     });
 
     if (result.isSuccess() && result.data?.events?.length) {

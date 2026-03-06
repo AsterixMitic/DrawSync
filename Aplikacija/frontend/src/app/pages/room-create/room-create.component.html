@@ -1,0 +1,25 @@
+<div class="create-wrap">
+  <div class="card create-card">
+    <h2>Create Room</h2>
+    <p class="hint">Configure your game settings</p>
+
+    <div class="field">
+      <label class="label">Rounds (1–10)</label>
+      <input type="number" [(ngModel)]="roundCount" min="1" max="10" />
+    </div>
+
+    <div class="field">
+      <label class="label">Max Players (2–16)</label>
+      <input type="number" [(ngModel)]="playerMaxCount" min="2" max="16" />
+    </div>
+
+    @if (error) { <p class="error-msg">{{ error }}</p> }
+
+    <div class="actions">
+      <button class="btn-secondary" (click)="back()">Back</button>
+      <button class="btn-primary" (click)="create()" [disabled]="loading">
+        {{ loading ? 'Creating…' : 'Create Room' }}
+      </button>
+    </div>
+  </div>
+</div>

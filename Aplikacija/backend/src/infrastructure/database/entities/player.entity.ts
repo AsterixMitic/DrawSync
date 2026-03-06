@@ -3,12 +3,14 @@ import {
   PrimaryColumn,
   Column,
   ManyToOne,
-  JoinColumn
+  JoinColumn,
+  Unique
 } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { RoomEntity } from './room.entity';
 
 @Entity('players')
+@Unique(['userId', 'roomId'])
 export class PlayerEntity {
   @PrimaryColumn('uuid', { name: 'player_id' })
   playerId: string;

@@ -6,6 +6,7 @@ import { DomainEvent } from "src/domain/events/base.event";
 export interface StartRoundResultData {
   round: Round;
   drawerId: string;
+  drawerUserId: string;
   playerStates: { playerId: string; state: PlayerState }[];
   events: DomainEvent[];
 }

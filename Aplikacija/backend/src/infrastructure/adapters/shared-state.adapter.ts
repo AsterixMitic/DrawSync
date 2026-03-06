@@ -24,7 +24,7 @@ export class SharedStateAdapter implements ISharedStatePort, OnModuleDestroy {
   }
 
   async setRoomState(state: RoomState): Promise<void> {
-    await this.redis.set(this.key(state.roomId), JSON.stringify(state));
+    await this.redis.set(this.key(state.roomId), JSON.stringify(state), 'EX', 86400);
   }
 
   async updateLockOwner(

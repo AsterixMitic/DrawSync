@@ -33,6 +33,11 @@ import { EventPublisherAdapter } from './adapters/event-publisher.adapter';
 import { SharedStateAdapter } from './adapters/shared-state.adapter';
 import { PasswordHasherAdapter } from './adapters/password-hasher.adapter';
 import { TokenProviderAdapter } from './adapters/token-provider.adapter';
+import {
+  RabbitMQProviders,
+  RABBITMQ_CONNECTION,
+  RABBITMQ_CHANNEL
+} from './messaging/rabbitmq-connection.provider';
 import { SaveRoomOperation } from './operations/room/save-room.operation';
 import { SavePlayerOperation } from './operations/room/save-player.operation';
 import { RemovePlayerOperation } from './operations/room/remove-player.operation';
@@ -65,6 +70,7 @@ import { BusinessModelPersistence } from './data-layer/business-model.persistenc
     })
   ],
   providers: [
+    ...RabbitMQProviders,
     UserMapper,
     PlayerMapper,
     RoomMapper,
@@ -222,7 +228,9 @@ import { BusinessModelPersistence } from './data-layer/business-model.persistenc
     SaveGuessOperation,
     UpdatePlayerScoreOperation,
     UpdateUserScoreOperation,
-    BusinessModelPersistence
+    BusinessModelPersistence,
+    RABBITMQ_CONNECTION,
+    RABBITMQ_CHANNEL
   ]
 })
 export class PersistenceModule {}

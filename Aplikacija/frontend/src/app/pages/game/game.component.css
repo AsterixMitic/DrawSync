@@ -11,7 +11,39 @@
 .room-id code { background: #2a2a4e; padding: 2px 6px; border-radius: 4px; }
 .round-badge { background: #7c83fd22; color: #7c83fd; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
 .top-actions { display: flex; align-items: center; gap: 10px; }
-.word-badge { background: #4caf8022; color: #4caf80; padding: 4px 12px; border-radius: 12px; font-weight: 600; }
+
+/* Round info bar */
+.round-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 20px; background: #1a2240;
+  border-bottom: 1px solid #2a2a4e; flex-shrink: 0;
+  gap: 16px;
+}
+.drawer-info { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; min-width: 160px; }
+.drawer-label { color: #666; }
+.drawer-name { color: #ffd700; font-size: 14px; }
+.you-tag { color: #7c83fd; font-size: 12px; }
+
+.word-area { flex: 1; text-align: center; }
+.word-display {
+  font-size: 20px; font-weight: 700; letter-spacing: 6px;
+  color: #555; font-family: monospace;
+}
+.word-display.word-revealed { color: #4caf80; letter-spacing: 3px; }
+
+.timer-area { min-width: 60px; text-align: right; }
+.timer-count {
+  font-size: 22px; font-weight: 800; color: #7c83fd;
+  font-variant-numeric: tabular-nums;
+}
+.timer-warning .timer-count {
+  color: #e05c5c;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
 
 /* Toast */
 .toast {
@@ -41,7 +73,9 @@
   background: #2a2a4e;
 }
 .player-list li.me { border-left: 3px solid #7c83fd; }
-.player-list li.drawer { border-left: 3px solid #ffd700; }
+.player-list li.drawer { border-left: 3px solid #ffd700; background: #2a2a2e; }
+.player-name { display: flex; align-items: center; gap: 4px; }
+.pencil-icon { font-size: 12px; }
 .crown { margin-left: 4px; }
 
 /* Scoreboard */
@@ -109,3 +143,17 @@ canvas {
 canvas.drawing { cursor: crosshair; }
 
 .end-btn { margin-top: 10px; }
+
+/* Word choice selection */
+.choice-label { font-size: 15px; color: #aaa; margin-bottom: 12px; }
+.word-choices { display: flex; flex-direction: column; gap: 10px; width: 220px; }
+.btn-choice {
+  padding: 12px 20px; font-size: 16px; font-weight: 600;
+  background: #2a2a4e; color: #e0e0ff; border: 1px solid #7c83fd44;
+  border-radius: 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  text-transform: capitalize;
+}
+.btn-choice:hover { background: #7c83fd33; border-color: #7c83fd; color: #fff; }
+
+/* Game over actions */
+.game-over-actions { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }

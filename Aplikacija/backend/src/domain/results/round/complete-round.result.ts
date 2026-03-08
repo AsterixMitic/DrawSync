@@ -7,6 +7,8 @@ export interface CompleteRoundResultData {
   round: Round;
   roomStatus: RoomStatus;
   nextDrawerId: string | null;
+  drawerPlayerId: string | null;
+  drawerBonusPoints: number;
   events: DomainEvent[];
 }
 

@@ -53,8 +53,14 @@ export class CompleteRoundCommand {
 
     if (!input.skipOwnerCheck) {
       const callerPlayer = room.players.find(p => p.userId === input.userId);
-      if (!callerPlayer || callerPlayer.playerId !== room.roomOwnerId) {
-        return Result.fail('Only the room owner can complete a round', 'UNAUTHORIZED');
+      if (!callerPlayer) {
+        return Result.fail('Player not found in room', 'UNAUTHORIZED');
+      }
+      const activeRoundForAuth = room.currentRound ?? room.rounds.find(r => r.isActive) ?? null;
+      const isOwner = callerPlayer.playerId === room.roomOwnerId;
+      const isDrawer = activeRoundForAuth ? callerPlayer.playerId === activeRoundForAuth.currentDrawerId : false;
+      if (!isOwner && !isDrawer) {
+        return Result.fail('Only the room owner or current drawer can complete a round', 'UNAUTHORIZED');
       }
     }
 
@@ -93,7 +99,9 @@ export class CompleteRoundCommand {
       await this.saveRoomOp.execute({ room });
 
       // Award drawer points if any guessers were correct
+      // Update domain model BEFORE savePlayerOp so the persisted score is correct
       if (drawerPoints > 0 && drawer) {
+        drawer.addScore(drawerPoints);
         await this.updatePlayerScoreOp.execute({ playerId: drawer.playerId, points: drawerPoints });
         await this.updateUserScoreOp.execute({ userId: drawer.userId, points: drawerPoints });
       }
@@ -119,6 +127,8 @@ export class CompleteRoundCommand {
       round: activeRound,
       roomStatus: room.status,
       nextDrawerId: room.nextDrawer?.playerId ?? null,
+      drawerPlayerId: drawer?.playerId ?? null,
+      drawerBonusPoints: drawerPoints,
       events
     });
   }

@@ -15,6 +15,7 @@ import { RoomClientApi } from '../../application/client-api/room.client-api';
 import { RoundClientApi } from '../../application/client-api/round.client-api';
 import { StrokeClientApi } from '../../application/client-api/stroke.client-api';
 import { GuessClientApi } from '../../application/client-api/guess.client-api';
+import { WordBankService } from '../../domain/services/word-bank.service';
 import { RoomStatus } from '../../domain/enums';
 
 interface SocketMeta {
@@ -37,6 +38,8 @@ export class GameGateway
   private readonly logger = new Logger(GameGateway.name);
   private readonly socketMeta = new Map<string, SocketMeta>();
   private readonly ROUND_MS = parseInt(process.env.ROUND_DURATION_MS ?? '60000');
+  private readonly pendingWordChoices = new Map<string, string[]>();
+  private readonly hintTimers = new Map<string, NodeJS.Timeout[]>();
 
   constructor(
     private readonly roomClientApi: RoomClientApi,
@@ -44,6 +47,7 @@ export class GameGateway
     private readonly strokeClientApi: StrokeClientApi,
     private readonly guessClientApi: GuessClientApi,
     private readonly timerService: RoundTimerService,
+    private readonly wordBank: WordBankService,
   ) {}
 
   handleConnection(client: Socket): void {
@@ -96,6 +100,7 @@ export class GameGateway
       roomId: data.roomId,
       playerId: result.data!.player.playerId,
       userId: user.userId,
+      name: user.name,
       playerCount: result.data!.room.playerCount,
     });
 
@@ -109,6 +114,7 @@ export class GameGateway
         player: {
           playerId: p.playerId,
           userId: p.userId,
+          name: user.name,
           roomId: p.roomId,
           score: p.score,
           state: p.state,
@@ -116,6 +122,7 @@ export class GameGateway
         players: r.players.map(pl => ({
           playerId: pl.playerId,
           userId: pl.userId,
+          name: pl.user?.name,
           score: pl.score,
           state: pl.state,
         })),
@@ -145,6 +152,13 @@ export class GameGateway
         roomDeleted: result.data!.roomDeleted,
         newOwnerId: result.data!.newOwnerId,
       });
+
+      // Drawer left - end round
+      if (result.data!.wasDrawer && !result.data!.roomDeleted) {
+        this.timerService.clear(data.roomId);
+        this.clearHintTimers(data.roomId);
+        await this.autoCompleteRound(data.roomId);
+      }
     }
 
     return { event: 'leftRoom', data: { roomId: data.roomId } };
@@ -174,33 +188,53 @@ export class GameGateway
   }
 
   @SubscribeMessage('startRound')
-  async handleStartRound(
+  handleStartRound(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { roomId: string },
   ) {
+    const choices = this.wordBank.getMultipleRandom(3);
+    this.pendingWordChoices.set(data.roomId, choices);
+    return { event: 'wordChoices', data: { choices } };
+  }
+
+  @SubscribeMessage('selectWord')
+  async handleSelectWord(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string; word: string },
+  ) {
     const user = (client as any).user;
+
+    const choices = this.pendingWordChoices.get(data.roomId);
+    if (!choices || !choices.includes(data.word)) {
+      return { event: 'error', data: { error: 'Invalid word selection', errorCode: 'VALIDATION_ERROR' } };
+    }
+
     const result = await this.roundClientApi.startRound({
       roomId: data.roomId,
       userId: user.userId,
+      word: data.word,
     });
 
     if (result.isFailure()) {
       return { event: 'error', data: { error: result.error, errorCode: result.errorCode } };
     }
 
+    this.pendingWordChoices.delete(data.roomId);
+
     const roundStartedPayload = {
       roomId: data.roomId,
       roundId: result.data!.round.id,
       roundNo: result.data!.round.roundNo,
       drawerId: result.data!.drawerId,
+      wordLength: data.word.replace(/ /g, '').length,
+      durationSeconds: Math.floor(this.ROUND_MS / 1000),
     };
+
     client.to(data.roomId).emit('roundStarted', roundStartedPayload);
+    client.emit('drawerWord', { word: data.word, roundId: result.data!.round.id });
 
-    // Private word delivery — only the calling socket (the drawer) receives this
-    client.emit('drawerWord', { word: result.data!.round.word, roundId: result.data!.round.id });
-
-    // Start round timer
     this.timerService.start(data.roomId, this.ROUND_MS, () => this.autoCompleteRound(data.roomId));
+    this.scheduleHints(data.roomId, data.word);
 
     return { event: 'roundStarted', data: roundStartedPayload };
   }
@@ -221,6 +255,7 @@ export class GameGateway
     }
 
     this.timerService.clear(data.roomId);
+    this.clearHintTimers(data.roomId);
 
     const roundCompletedPayload = {
       roomId: data.roomId,
@@ -228,6 +263,8 @@ export class GameGateway
       roundNo: result.data!.round.roundNo,
       roomStatus: result.data!.roomStatus,
       nextDrawerId: result.data!.nextDrawerId,
+      drawerPlayerId: result.data!.drawerPlayerId,
+      drawerBonusPoints: result.data!.drawerBonusPoints,
     };
     client.to(data.roomId).emit('roundCompleted', roundCompletedPayload);
 
@@ -239,6 +276,7 @@ export class GameGateway
   }
 
   private async autoCompleteRound(roomId: string): Promise<void> {
+    this.clearHintTimers(roomId);
     const result = await this.roundClientApi.completeRound({ roomId, skipOwnerCheck: true });
     if (result.isSuccess()) {
       this.server.to(roomId).emit('roundCompleted', {
@@ -247,10 +285,45 @@ export class GameGateway
         roundNo: result.data!.round.roundNo,
         roomStatus: result.data!.roomStatus,
         nextDrawerId: result.data!.nextDrawerId,
+        drawerPlayerId: result.data!.drawerPlayerId,
+        drawerBonusPoints: result.data!.drawerBonusPoints,
       });
       if (result.data!.roomStatus === RoomStatus.FINISHED) {
         this.server.to(roomId).emit('gameFinished', { roomId });
       }
+    }
+  }
+
+  private scheduleHints(roomId: string, word: string): void {
+    const chars = word.split('');
+    const letterPositions = chars
+      .map((c, i) => (c !== ' ' ? i : -1))
+      .filter(i => i >= 0);
+
+    // Letter at random spot
+    const shuffled = [...letterPositions].sort(() => Math.random() - 0.5);
+    const maxHints = Math.min(3, shuffled.length);
+
+    const timers: NodeJS.Timeout[] = [];
+    for (let n = 1; n <= maxHints; n++) {
+      const revealSet = new Set(shuffled.slice(0, n));
+      timers.push(
+        setTimeout(() => {
+          const hint = chars
+            .map((c, i) => (c === ' ' ? ' ' : revealSet.has(i) ? c : '_'))
+            .join(' ');
+          this.server.to(roomId).emit('hintRevealed', { hint });
+        }, n * 15_000),
+      );
+    }
+    this.hintTimers.set(roomId, timers);
+  }
+
+  private clearHintTimers(roomId: string): void {
+    const timers = this.hintTimers.get(roomId);
+    if (timers) {
+      timers.forEach(t => clearTimeout(t));
+      this.hintTimers.delete(roomId);
     }
   }
 
@@ -297,7 +370,11 @@ export class GameGateway
       style: data.style,
     });
 
-    return { event: 'strokeApplied', data: { strokeId: result.data!.stroke.id } };
+    return { event: 'strokeApplied', data: {
+      strokeId: result.data!.stroke.id,
+      points: data.points,
+      style: data.style,
+    } };
   }
 
   @SubscribeMessage('undoStroke')
@@ -385,6 +462,27 @@ export class GameGateway
       });
     }
 
+    if (result.data!.allGuessed) {
+      this.timerService.clear(data.roomId);
+      this.clearHintTimers(data.roomId);
+      const completeResult = await this.roundClientApi.completeRound({ roomId: data.roomId, skipOwnerCheck: true });
+      if (completeResult.isSuccess()) {
+        const payload = {
+          roomId: data.roomId,
+          roundId: completeResult.data!.round.id,
+          roundNo: completeResult.data!.round.roundNo,
+          roomStatus: completeResult.data!.roomStatus,
+          nextDrawerId: completeResult.data!.nextDrawerId,
+          drawerPlayerId: completeResult.data!.drawerPlayerId,
+          drawerBonusPoints: completeResult.data!.drawerBonusPoints,
+        };
+        this.server.to(data.roomId).emit('roundCompleted', payload);
+        if (completeResult.data!.roomStatus === RoomStatus.FINISHED) {
+          this.server.to(data.roomId).emit('gameFinished', { roomId: data.roomId });
+        }
+      }
+    }
+
     return {
       event: 'guessResult',
       data: {
@@ -396,5 +494,24 @@ export class GameGateway
 
   broadcastToRoom(roomId: string, event: string, data: any): void {
     this.server.to(roomId).emit(event, data);
+  }
+
+  @SubscribeMessage('resetRoom')
+  async handleResetRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string },
+  ) {
+    const user = (client as any).user;
+    const result = await this.roomClientApi.resetRoom({
+      roomId: data.roomId,
+      userId: user.userId,
+    });
+
+    if (result.isFailure()) {
+      return { event: 'error', data: { error: result.error, errorCode: result.errorCode } };
+    }
+
+    this.server.to(data.roomId).emit('roomReset', { roomId: data.roomId });
+    return { event: 'roomReset', data: { roomId: data.roomId } };
   }
 }

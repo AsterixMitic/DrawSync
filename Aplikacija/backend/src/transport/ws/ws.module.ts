@@ -7,6 +7,7 @@ import { GuessApplicationModule } from '../../application/client-api/guess.appli
 import { GameGateway } from './game.gateway';
 import { WsAuthGuard } from './ws-auth.guard';
 import { RoundTimerService } from './round-timer.service';
+import { WordBankService } from '../../domain/services/word-bank.service';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { RoundTimerService } from './round-timer.service';
     StrokeApplicationModule,
     GuessApplicationModule,
   ],
-  providers: [GameGateway, WsAuthGuard, RoundTimerService],
+  providers: [GameGateway, WsAuthGuard, RoundTimerService, WordBankService],
   exports: [GameGateway],
 })
 export class WsModule {}

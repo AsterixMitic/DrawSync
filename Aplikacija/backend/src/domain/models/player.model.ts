@@ -52,6 +52,10 @@ export class Player {
     this._score += points;
   }
 
+  resetScore(): void {
+    this._score = 0;
+  }
+
   changeState(newState: PlayerState): void {
     this._state = newState;
   }

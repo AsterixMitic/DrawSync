@@ -60,4 +60,8 @@ export class RoundRepository implements IRoundRepositoryPort {
     const max = result?.max ? Number(result.max) : 0;
     return max + 1;
   }
+
+  async deleteByRoomId(roomId: string): Promise<void> {
+    await this.roundRepo.delete({ roomId });
+  }
 }

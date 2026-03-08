@@ -61,7 +61,9 @@ export class GameComponent implements OnInit, OnDestroy {
       setTimeout(() => this.error = '', 4000);
     }));
 
-    this.subs.add(this.game.strokeApplied$.subscribe(d => this.drawStroke(d)));
+    this.subs.add(this.game.strokeApplied$.subscribe(d => {
+      if (!this.isDrawer) this.drawStroke(d);
+    }));
     this.subs.add(this.game.strokeUndone$.subscribe(() => this.redrawAll()));
     this.subs.add(this.game.canvasCleared$.subscribe(() => this.clearCtx()));
 
@@ -71,7 +73,7 @@ export class GameComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
-    this.game.disconnect();
+    this.game.leaveRoom();
   }
 
   // ── Game actions ──────────────────────────────────────────────
@@ -80,14 +82,28 @@ export class GameComponent implements OnInit, OnDestroy {
   get isDrawer(): boolean { return this.state?.myPlayerId === this.state?.drawerId; }
   get isNextDrawer(): boolean { return this.state?.myPlayerId === this.state?.nextDrawerId; }
 
+  get currentDrawer() { return this.state?.players.find(p => p.playerId === this.state?.drawerId); }
+  get timerWarning(): boolean { const t = this.state?.timeLeft; return t !== null && t !== undefined && t <= 10; }
+  get sortedPlayers() { return [...(this.state?.players ?? [])].sort((a, b) => b.score - a.score); }
+
+  get wordDisplay(): string {
+    if (this.state?.word) return this.state.word;
+    if (this.state?.hintDisplay) return this.state.hintDisplay;
+    if (this.state?.wordLength) return Array(this.state.wordLength).fill('_').join(' ');
+    return '';
+  }
+
   startGame(): void { this.game.startGame(); }
   startRound(): void { this.game.startRound(); }
+  selectWord(word: string): void { this.game.selectWord(word); }
   completeRound(): void { this.game.completeRound(); }
 
   leaveRoom(): void {
-    this.game.disconnect();
+    this.game.leaveRoom();
     this.router.navigate(['/home']);
   }
+
+  resetRoom(): void { this.game.resetRoom(); }
 
   submitGuess(): void {
     if (!this.guessText.trim()) return;
@@ -169,7 +185,7 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   playerName(playerId: string): string {
-    // Display userId shortened if no name available
-    return playerId.slice(0, 8) + '…';
+    const p = this.state?.players.find(pl => pl.playerId === playerId);
+    return p?.name ?? p?.userId?.slice(0, 8) ?? playerId.slice(0, 8);
   }
 }

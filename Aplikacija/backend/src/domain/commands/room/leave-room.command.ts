@@ -78,6 +78,7 @@ export class LeaveRoomCommand {
         removedPlayer,
         newOwnerId: null,
         roomDeleted: true,
+        wasDrawer,
         events
       });
     }
@@ -124,6 +125,7 @@ export class LeaveRoomCommand {
       removedPlayer,
       newOwnerId: wasOwner ? room.roomOwnerId : null,
       roomDeleted: false,
+      wasDrawer,
       events
     });
   }

@@ -35,8 +35,13 @@ export interface GameState {
   drawerId: string | null;
   nextDrawerId: string | null;
   word: string | null;
+  wordLength: number | null;
+  wordChoices: string[] | null;
+  hintDisplay: string | null;
   strokes: StrokeData[];
   guesses: GuessMsg[];
+  timeLeft: number | null;
+  roundDuration: number;
 }
 
 const EMPTY: GameState = {
@@ -44,12 +49,16 @@ const EMPTY: GameState = {
   roomStatus: 'WAITING', players: [],
   roundId: null, roundNo: 0,
   drawerId: null, nextDrawerId: null,
-  word: null, strokes: [], guesses: [],
+  word: null, wordLength: null,
+  wordChoices: null, hintDisplay: null,
+  strokes: [], guesses: [],
+  timeLeft: null, roundDuration: 60,
 };
 
 @Injectable({ providedIn: 'root' })
 export class GameService implements OnDestroy {
   private socket!: Socket;
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
 
   private stateSubject = new BehaviorSubject<GameState>({ ...EMPTY });
   state$ = this.stateSubject.asObservable();
@@ -72,6 +81,7 @@ export class GameService implements OnDestroy {
   }
 
   disconnect(): void {
+    this.clearTimerInterval();
     this.socket?.disconnect();
     this.stateSubject.next({ ...EMPTY });
   }
@@ -94,8 +104,24 @@ export class GameService implements OnDestroy {
     this.socket.emit('startRound', { roomId: this.state.roomId });
   }
 
+  selectWord(word: string): void {
+    this.socket.emit('selectWord', { roomId: this.state.roomId, word });
+  }
+
   completeRound(): void {
     this.socket.emit('completeRound', { roomId: this.state.roomId });
+  }
+
+  leaveRoom(): void {
+    const { roomId, myPlayerId } = this.state;
+    if (this.socket?.connected && roomId && myPlayerId) {
+      this.socket.emit('leaveRoom', { roomId, playerId: myPlayerId });
+    }
+    this.disconnect();
+  }
+
+  resetRoom(): void {
+    this.socket.emit('resetRoom', { roomId: this.state.roomId });
   }
 
   applyStroke(points: { x: number; y: number }[], style: StrokeData['style']): void {
@@ -123,18 +149,27 @@ export class GameService implements OnDestroy {
   private registerHandlers(): void {
     this.socket.on('error', (d: any) => this.error$.next(d?.error ?? 'Unknown error'));
 
-    this.socket.on('joinedRoom', (d: { roomId: string; roomOwnerId: string; player: { playerId: string; userId: string; score: number; state: string }; players: PlayerState[] }) => {
+    this.socket.on('joinedRoom', (d: {
+      roomId: string;
+      roomOwnerId: string;
+      player: { playerId: string; userId: string; name?: string; score: number; state: string };
+      players: PlayerState[];
+    }) => {
+      // Ensure the joining player's own entry uses the JWT-sourced name
+      const players = d.players.map(p =>
+        p.playerId === d.player.playerId ? { ...p, name: d.player.name ?? p.name } : p
+      );
       this.patch({
         myPlayerId: d.player.playerId,
         roomOwnerId: d.roomOwnerId,
-        players: d.players,
+        players,
       });
     });
 
-    this.socket.on('playerJoined', (d: { playerId: string; userId: string; playerCount: number }) => {
+    this.socket.on('playerJoined', (d: { playerId: string; userId: string; name?: string; playerCount: number }) => {
       const players = [...this.state.players];
       if (!players.find(p => p.playerId === d.playerId)) {
-        players.push({ playerId: d.playerId, userId: d.userId, score: 0, state: 'WAITING' });
+        players.push({ playerId: d.playerId, userId: d.userId, name: d.name, score: 0, state: 'WAITING' });
       }
       this.patch({ players });
     });
@@ -150,20 +185,49 @@ export class GameService implements OnDestroy {
       this.patch({ roomStatus: 'IN_PROGRESS', nextDrawerId: d.nextDrawerId });
     });
 
-    this.socket.on('roundStarted', (d: { roundId: string; roundNo: number; drawerId: string }) => {
+    this.socket.on('wordChoices', (d: { choices: string[] }) => {
+      this.patch({ wordChoices: d.choices });
+    });
+
+    this.socket.on('roundStarted', (d: {
+      roundId: string;
+      roundNo: number;
+      drawerId: string;
+      wordLength?: number;
+      durationSeconds?: number;
+    }) => {
+      this.clearTimerInterval();
+      const duration = d.durationSeconds ?? 60;
       this.patch({
         roundId: d.roundId,
         roundNo: d.roundNo,
         drawerId: d.drawerId,
         nextDrawerId: null,
         word: null,
+        wordLength: d.wordLength ?? null,
+        wordChoices: null,
+        hintDisplay: null,
         strokes: [],
         guesses: [],
+        timeLeft: duration,
+        roundDuration: duration,
       });
+      this.timerInterval = setInterval(() => {
+        const current = this.state.timeLeft;
+        if (current === null || current <= 0) {
+          this.clearTimerInterval();
+          return;
+        }
+        this.patch({ timeLeft: current - 1 });
+      }, 1000);
     });
 
     this.socket.on('drawerWord', (d: { word: string; roundId: string }) => {
       this.patch({ word: d.word });
+    });
+
+    this.socket.on('hintRevealed', (d: { hint: string }) => {
+      this.patch({ hintDisplay: d.hint });
     });
 
     this.socket.on('strokeApplied', (d: StrokeData) => {
@@ -186,19 +250,66 @@ export class GameService implements OnDestroy {
       this.patch({ guesses: [...this.state.guesses, d] });
     });
 
-    this.socket.on('roundCompleted', (d: { roundId: string; roundNo: number; roomStatus: string; nextDrawerId: string | null }) => {
+    this.socket.on('correctGuess', (d: { playerId: string; pointsAwarded: number }) => {
+      const players = this.state.players.map(p =>
+        p.playerId === d.playerId ? { ...p, score: p.score + d.pointsAwarded } : p
+      );
+      this.patch({ players });
+    });
+
+    this.socket.on('roundCompleted', (d: { roundId: string; roundNo: number; roomStatus: string; nextDrawerId: string | null; drawerPlayerId: string | null; drawerBonusPoints: number }) => {
+      this.clearTimerInterval();
+      let players = this.state.players;
+      if (d.drawerPlayerId && d.drawerBonusPoints > 0) {
+        players = players.map(p =>
+          p.playerId === d.drawerPlayerId ? { ...p, score: p.score + d.drawerBonusPoints } : p
+        );
+      }
       this.patch({
+        players,
         drawerId: null,
         nextDrawerId: d.nextDrawerId,
         roomStatus: d.roomStatus as any,
         word: null,
+        wordLength: null,
+        wordChoices: null,
+        hintDisplay: null,
+        timeLeft: null,
+        roundId: null,
       });
     });
 
     this.socket.on('gameFinished', () => {
+      this.clearTimerInterval();
       this.patch({ roomStatus: 'FINISHED' });
       this.gameFinished$.next();
     });
+
+    this.socket.on('roomReset', () => {
+      this.clearTimerInterval();
+      this.patch({
+        roomStatus: 'WAITING',
+        players: this.state.players.map(p => ({ ...p, score: 0, state: 'WAITING' })),
+        roundId: null,
+        roundNo: 0,
+        drawerId: null,
+        nextDrawerId: null,
+        word: null,
+        wordLength: null,
+        wordChoices: null,
+        hintDisplay: null,
+        strokes: [],
+        guesses: [],
+        timeLeft: null,
+      });
+    });
+  }
+
+  private clearTimerInterval(): void {
+    if (this.timerInterval !== null) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
   }
 
   private patch(partial: Partial<GameState>): void {

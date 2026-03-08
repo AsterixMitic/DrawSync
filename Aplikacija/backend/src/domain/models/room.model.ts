@@ -216,4 +216,17 @@ export class Room {
   setRoomOwner(ownerId: string | null): void {
     this._roomOwnerId = ownerId as string;
   }
+
+  reset(): void {
+    if (this._status !== RoomStatus.FINISHED) {
+      throw new Error('Can only reset a finished room');
+    }
+    this._status = RoomStatus.WAITING;
+    this._rounds = [];
+    this._currentRoundId = null;
+    this._players.forEach(p => {
+      p.resetScore();
+      p.setAsWaiting();
+    });
+  }
 }

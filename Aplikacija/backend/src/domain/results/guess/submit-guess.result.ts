@@ -6,6 +6,7 @@ export interface SubmitGuessResultData {
   guess: Guess;
   isCorrect: boolean;
   pointsAwarded: number;
+  allGuessersCorrect: boolean;
   events: DomainEvent[];
 }
 

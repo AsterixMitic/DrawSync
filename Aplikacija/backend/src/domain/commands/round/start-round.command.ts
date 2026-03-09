@@ -17,6 +17,7 @@ export interface StartRoundInput {
   roomId: string;
   word?: string;
   userId: string;
+  skipDrawerCheck?: boolean;
 }
 
 @Injectable()
@@ -53,7 +54,7 @@ export class StartRoundCommand {
       return Result.fail('Game has not started', 'INVALID_STATE');
     }
 
-    if (room.nextDrawer?.userId !== input.userId) {
+    if (!input.skipDrawerCheck && room.nextDrawer?.userId !== input.userId) {
       return Result.fail('Only the next drawer can start the round', 'UNAUTHORIZED');
     }
 

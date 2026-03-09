@@ -81,9 +81,14 @@ export class SubmitGuessCommand {
     }
 
     let pointsAwarded = 0;
+    let allGuessersCorrect = false;
     if (isCorrect) {
       const correctGuessCount = round.correctGuesses.length - 1;
       pointsAwarded = this.calculatePoints(Math.max(correctGuessCount, 0));
+
+      const roomPlayers = await this.playerRepo.findByRoomId(round.roomId);
+      const guesserCount = roomPlayers.filter(p => p.playerId !== round.currentDrawerId).length;
+      allGuessersCorrect = round.correctGuesses.length >= guesserCount;
     }
 
     const events: DomainEvent[] = [
@@ -115,6 +120,7 @@ export class SubmitGuessCommand {
       guess,
       isCorrect,
       pointsAwarded,
+      allGuessersCorrect,
       events
     });
   }

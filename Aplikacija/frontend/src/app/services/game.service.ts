@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../environments/environment';
@@ -13,7 +13,7 @@ export interface PlayerState {
 
 export interface StrokeData {
   strokeId: string;
-  points: { x: number; y: number }[];
+  points: { x: number; y: number }[];  // normalized 0–1 range
   style: { color: string; lineWidth: number; lineCap?: string; opacity?: number };
 }
 
@@ -35,6 +35,8 @@ export interface GameState {
   drawerId: string | null;
   nextDrawerId: string | null;
   word: string | null;
+  wordLength: number | null;
+  timeLeft: number | null;
   strokes: StrokeData[];
   guesses: GuessMsg[];
 }
@@ -44,12 +46,16 @@ const EMPTY: GameState = {
   roomStatus: 'WAITING', players: [],
   roundId: null, roundNo: 0,
   drawerId: null, nextDrawerId: null,
-  word: null, strokes: [], guesses: [],
+  word: null, wordLength: null, timeLeft: null,
+  strokes: [], guesses: [],
 };
 
 @Injectable({ providedIn: 'root' })
 export class GameService implements OnDestroy {
   private socket!: Socket;
+  private timerHandle: ReturnType<typeof setInterval> | null = null;
+
+  constructor(private ngZone: NgZone) {}
 
   private stateSubject = new BehaviorSubject<GameState>({ ...EMPTY });
   state$ = this.stateSubject.asObservable();
@@ -72,6 +78,7 @@ export class GameService implements OnDestroy {
   }
 
   disconnect(): void {
+    this.clearTimer();
     this.socket?.disconnect();
     this.stateSubject.next({ ...EMPTY });
   }
@@ -84,6 +91,13 @@ export class GameService implements OnDestroy {
   joinRoom(roomId: string): void {
     this.patch({ roomId });
     this.socket.emit('joinRoom', { roomId });
+  }
+
+  leaveRoom(): void {
+    const { roomId, myPlayerId } = this.state;
+    if (roomId && myPlayerId) {
+      this.socket.emit('leaveRoom', { roomId, playerId: myPlayerId });
+    }
   }
 
   startGame(): void {
@@ -120,10 +134,33 @@ export class GameService implements OnDestroy {
     this.socket.emit('submitGuess', { roomId, roundId, playerId: myPlayerId, guessText });
   }
 
+  private startTimer(seconds: number): void {
+    this.clearTimer();
+    this.patch({ timeLeft: seconds });
+    this.timerHandle = setInterval(() => {
+      const current = this.state.timeLeft ?? 0;
+      const next = current <= 1 ? 0 : current - 1;
+      this.patch({ timeLeft: next });
+      if (next === 0) this.clearTimer();
+    }, 1000);
+  }
+
+  private clearTimer(): void {
+    if (this.timerHandle !== null) {
+      clearInterval(this.timerHandle);
+      this.timerHandle = null;
+    }
+  }
+
   private registerHandlers(): void {
     this.socket.on('error', (d: any) => this.error$.next(d?.error ?? 'Unknown error'));
 
-    this.socket.on('joinedRoom', (d: { roomId: string; roomOwnerId: string; player: { playerId: string; userId: string; score: number; state: string }; players: PlayerState[] }) => {
+    this.socket.on('joinedRoom', (d: {
+      roomId: string;
+      roomOwnerId: string;
+      player: { playerId: string; userId: string; score: number; state: string; name: string };
+      players: PlayerState[];
+    }) => {
       this.patch({
         myPlayerId: d.player.playerId,
         roomOwnerId: d.roomOwnerId,
@@ -131,10 +168,10 @@ export class GameService implements OnDestroy {
       });
     });
 
-    this.socket.on('playerJoined', (d: { playerId: string; userId: string; playerCount: number }) => {
+    this.socket.on('playerJoined', (d: { playerId: string; userId: string; name: string; playerCount: number }) => {
       const players = [...this.state.players];
       if (!players.find(p => p.playerId === d.playerId)) {
-        players.push({ playerId: d.playerId, userId: d.userId, score: 0, state: 'WAITING' });
+        players.push({ playerId: d.playerId, userId: d.userId, name: d.name, score: 0, state: 'WAITING' });
       }
       this.patch({ players });
     });
@@ -150,20 +187,23 @@ export class GameService implements OnDestroy {
       this.patch({ roomStatus: 'IN_PROGRESS', nextDrawerId: d.nextDrawerId });
     });
 
-    this.socket.on('roundStarted', (d: { roundId: string; roundNo: number; drawerId: string }) => {
+    this.socket.on('roundStarted', (d: { roundId: string; roundNo: number; drawerId: string; wordLength: number; timerSeconds: number; word?: string }) => {
+      console.log('[GameService] roundStarted received:', d);
+      console.log('[GameService] word in payload:', d.word);
+      console.log('[GameService] myPlayerId:', this.state.myPlayerId, '| drawerId:', d.drawerId);
       this.patch({
         roundId: d.roundId,
         roundNo: d.roundNo,
         drawerId: d.drawerId,
         nextDrawerId: null,
-        word: null,
+        word: d.word ?? null,
+        wordLength: d.wordLength,
+        timeLeft: d.timerSeconds,
         strokes: [],
         guesses: [],
       });
-    });
-
-    this.socket.on('drawerWord', (d: { word: string; roundId: string }) => {
-      this.patch({ word: d.word });
+      console.log('[GameService] state.word after patch:', this.state.word);
+      this.startTimer(d.timerSeconds);
     });
 
     this.socket.on('strokeApplied', (d: StrokeData) => {
@@ -186,12 +226,29 @@ export class GameService implements OnDestroy {
       this.patch({ guesses: [...this.state.guesses, d] });
     });
 
-    this.socket.on('roundCompleted', (d: { roundId: string; roundNo: number; roomStatus: string; nextDrawerId: string | null }) => {
+    this.socket.on('correctGuess', (d: { playerId: string; pointsAwarded: number }) => {
+      const players = this.state.players.map(p =>
+        p.playerId === d.playerId ? { ...p, score: p.score + d.pointsAwarded } : p
+      );
+      this.patch({ players });
+    });
+
+    this.socket.on('roundCompleted', (d: { roundId: string; roundNo: number; roomStatus: string; nextDrawerId: string | null; drawerId: string | null; drawerPoints: number }) => {
+      this.clearTimer();
+      // Apply drawer points earned this round
+      const players = d.drawerId && d.drawerPoints > 0
+        ? this.state.players.map(p =>
+            p.playerId === d.drawerId ? { ...p, score: p.score + d.drawerPoints } : p
+          )
+        : this.state.players;
       this.patch({
         drawerId: null,
         nextDrawerId: d.nextDrawerId,
         roomStatus: d.roomStatus as any,
         word: null,
+        wordLength: null,
+        timeLeft: null,
+        players,
       });
     });
 
@@ -202,7 +259,9 @@ export class GameService implements OnDestroy {
   }
 
   private patch(partial: Partial<GameState>): void {
-    this.stateSubject.next({ ...this.stateSubject.value, ...partial });
+    this.ngZone.run(() => {
+      this.stateSubject.next({ ...this.stateSubject.value, ...partial });
+    });
   }
 
   ngOnDestroy(): void { this.disconnect(); }

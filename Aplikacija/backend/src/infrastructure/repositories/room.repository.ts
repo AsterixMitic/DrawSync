@@ -23,7 +23,8 @@ export class RoomRepository implements IRoomRepositoryPort {
   async findByIdWithPlayers(id: string): Promise<Room | null> {
     const entity = await this.roomRepo.findOne({
       where: { id },
-      relations: { players: true }
+      relations: { players: { user: true } },
+      order: { players: { playerId: 'ASC' } },
     });
     return entity ? this.mapper.toDomain(entity) : null;
   }
@@ -31,7 +32,7 @@ export class RoomRepository implements IRoomRepositoryPort {
   async findByIdWithRounds(id: string): Promise<Room | null> {
     const entity = await this.roomRepo.findOne({
       where: { id },
-      relations: { rounds: true }
+      relations: { rounds: true },
     });
     return entity ? this.mapper.toDomain(entity) : null;
   }
@@ -45,7 +46,8 @@ export class RoomRepository implements IRoomRepositoryPort {
           strokes: true,
           guesses: true
         }
-      }
+      },
+      order: { players: { playerId: 'ASC' } },
     });
     return entity ? this.mapper.toDomain(entity) : null;
   }

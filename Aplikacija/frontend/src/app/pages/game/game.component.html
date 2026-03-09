@@ -8,6 +8,11 @@
       @if (state.roundId) {
         <span class="round-badge">Round {{ state.roundNo }}</span>
       }
+      @if (state.roundId && state.timeLeft !== null) {
+        <span class="timer-badge" [class.timer-warning]="(state.timeLeft ?? 0) <= 10">
+          {{ state.timeLeft }}s
+        </span>
+      }
     </div>
     <div class="top-actions">
       @if (state.word) {
@@ -29,7 +34,7 @@
       <ul class="scoreboard">
         @for (p of state.players; track p.playerId) {
           <li [class.me]="p.playerId === state.myPlayerId">
-            <span>{{ p.userId }}</span>
+            <span>{{ playerName(p.playerId) }}</span>
             <span class="pts">{{ p.score }} pts</span>
           </li>
         }
@@ -47,7 +52,7 @@
       <ul class="player-list">
         @for (p of state.players; track p.playerId) {
           <li [class.me]="p.playerId === state.myPlayerId">
-            {{ p.userId }}
+            {{ playerName(p.playerId) }}
             @if (p.playerId === state.roomOwnerId) { <span class="crown">👑</span> }
           </li>
         }
@@ -72,7 +77,7 @@
           <ul class="player-list">
             @for (p of state.players; track p.playerId) {
               <li [class.me]="p.playerId === state.myPlayerId" [class.drawer]="p.playerId === state.drawerId">
-                <span>{{ p.userId }}</span>
+                <span>{{ playerName(p.playerId) }}</span>
                 <span class="pts">{{ p.score }}</span>
               </li>
             }
@@ -84,7 +89,7 @@
           <ul class="guess-list">
             @for (g of state.guesses; track $index) {
               <li [class.correct]="g.isCorrect">
-                <span class="gp">{{ g.playerId.slice(0,6) }}</span>
+                <span class="gp">{{ playerName(g.playerId) }}</span>
                 <span>{{ g.guessText }}</span>
                 @if (g.isCorrect) { <span class="check">✓ +{{ g.pointsAwarded }}</span> }
               </li>
@@ -118,28 +123,36 @@
         }
 
         @if (state.roundId) {
-          <div class="canvas-toolbar" *ngIf="isDrawer">
-            <input type="color" [(ngModel)]="color" title="Color" />
-            <input type="range" [(ngModel)]="lineWidth" min="1" max="30" title="Brush size" />
-            <span>{{ lineWidth }}px</span>
-            <button class="btn-secondary" (click)="onClearCanvas()">Clear</button>
-            <span class="hint">Ctrl+Z to undo</span>
+          @if (isDrawer) {
+            <div class="canvas-toolbar">
+              <input type="color" [(ngModel)]="color" [disabled]="eraserMode" title="Color" />
+              <input type="range" [(ngModel)]="lineWidth" min="1" max="30" title="Brush size" />
+              <span>{{ lineWidth }}px</span>
+              <button class="btn-secondary" [class.active]="eraserMode" (click)="eraserMode = !eraserMode">Eraser</button>
+              <button class="btn-secondary" (click)="onClearCanvas()">Clear</button>
+              <span class="toolbar-hint">Ctrl+Z to undo</span>
+            </div>
+          }
+
+          @if (!isDrawer) {
+            <div class="word-hint">
+              @for (i of wordUnderscores; track i) {
+                <span class="letter-slot">_</span>
+              }
+            </div>
+          }
+
+          <div class="canvas-container">
+            <canvas
+              #canvas
+              [class.drawing]="isDrawer"
+              (mousedown)="onMouseDown($event)"
+              (mousemove)="onMouseMove($event)"
+              (mouseup)="onMouseUp()"
+              (mouseleave)="onMouseUp()"
+            ></canvas>
           </div>
 
-          <canvas
-            #canvas
-            width="700"
-            height="480"
-            [class.drawing]="isDrawer"
-            (mousedown)="onMouseDown($event)"
-            (mousemove)="onMouseMove($event)"
-            (mouseup)="onMouseUp()"
-            (mouseleave)="onMouseUp()"
-          ></canvas>
-
-          @if (isOwner) {
-            <button class="btn-secondary end-btn" (click)="completeRound()">End Round</button>
-          }
         }
       </main>
 

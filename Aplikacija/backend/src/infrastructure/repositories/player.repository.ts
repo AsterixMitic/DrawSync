@@ -30,7 +30,7 @@ export class PlayerRepository implements IPlayerRepositoryPort {
   }
 
   async findByRoomId(roomId: string): Promise<Player[]> {
-    const entities = await this.playerRepo.find({ where: { roomId } });
+    const entities = await this.playerRepo.find({ where: { roomId }, order: { playerId: 'ASC' } });
     return this.mapper.toDomainList(entities);
   }
 

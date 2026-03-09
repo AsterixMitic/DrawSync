@@ -59,7 +59,8 @@ export class JoinRoomCommand {
     const player = new Player({
       userId: input.userId,
       roomId: room.id,
-      state: PlayerState.WAITING
+      state: PlayerState.WAITING,
+      user,
     });
 
     try {

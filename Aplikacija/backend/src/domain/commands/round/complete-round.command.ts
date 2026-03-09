@@ -119,6 +119,8 @@ export class CompleteRoundCommand {
       round: activeRound,
       roomStatus: room.status,
       nextDrawerId: room.nextDrawer?.playerId ?? null,
+      drawerPoints,
+      drawerId: drawer?.playerId ?? null,
       events
     });
   }

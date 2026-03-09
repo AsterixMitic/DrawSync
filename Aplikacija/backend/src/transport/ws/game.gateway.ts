@@ -96,6 +96,7 @@ export class GameGateway
       roomId: data.roomId,
       playerId: result.data!.player.playerId,
       userId: user.userId,
+      name: user.name,
       playerCount: result.data!.room.playerCount,
     });
 
@@ -112,10 +113,12 @@ export class GameGateway
           roomId: p.roomId,
           score: p.score,
           state: p.state,
+          name: user.name,
         },
         players: r.players.map(pl => ({
           playerId: pl.playerId,
           userId: pl.userId,
+          name: pl.user?.name ?? pl.userId,
           score: pl.score,
           state: pl.state,
         })),
@@ -188,21 +191,24 @@ export class GameGateway
       return { event: 'error', data: { error: result.error, errorCode: result.errorCode } };
     }
 
-    const roundStartedPayload = {
+    const word = result.data!.round.word;
+    const wordLength = word.length;
+    const timerSeconds = Math.floor(this.ROUND_MS / 1000);
+    const roundStartedBase = {
       roomId: data.roomId,
       roundId: result.data!.round.id,
       roundNo: result.data!.round.roundNo,
       drawerId: result.data!.drawerId,
+      wordLength,
+      timerSeconds,
     };
-    client.to(data.roomId).emit('roundStarted', roundStartedPayload);
-
-    // Private word delivery — only the calling socket (the drawer) receives this
-    client.emit('drawerWord', { word: result.data!.round.word, roundId: result.data!.round.id });
+    // To all other players (no word)
+    client.to(data.roomId).emit('roundStarted', roundStartedBase);
+    // To the drawer: same payload but with the word included
+    client.emit('roundStarted', { ...roundStartedBase, word });
 
     // Start round timer
     this.timerService.start(data.roomId, this.ROUND_MS, () => this.autoCompleteRound(data.roomId));
-
-    return { event: 'roundStarted', data: roundStartedPayload };
   }
 
   @SubscribeMessage('completeRound')
@@ -228,6 +234,8 @@ export class GameGateway
       roundNo: result.data!.round.roundNo,
       roomStatus: result.data!.roomStatus,
       nextDrawerId: result.data!.nextDrawerId,
+      drawerId: result.data!.drawerId,
+      drawerPoints: result.data!.drawerPoints,
     };
     client.to(data.roomId).emit('roundCompleted', roundCompletedPayload);
 
@@ -239,6 +247,7 @@ export class GameGateway
   }
 
   private async autoCompleteRound(roomId: string): Promise<void> {
+    this.timerService.clear(roomId);
     const result = await this.roundClientApi.completeRound({ roomId, skipOwnerCheck: true });
     if (result.isSuccess()) {
       this.server.to(roomId).emit('roundCompleted', {
@@ -247,11 +256,56 @@ export class GameGateway
         roundNo: result.data!.round.roundNo,
         roomStatus: result.data!.roomStatus,
         nextDrawerId: result.data!.nextDrawerId,
+        drawerId: result.data!.drawerId,
+        drawerPoints: result.data!.drawerPoints,
       });
       if (result.data!.roomStatus === RoomStatus.FINISHED) {
         this.server.to(roomId).emit('gameFinished', { roomId });
+      } else {
+        // Brief pause so clients process roundCompleted before roundStarted
+        setTimeout(() => this.autoStartNextRound(roomId), 2000);
       }
     }
+  }
+
+  private async autoStartNextRound(roomId: string): Promise<void> {
+    const result = await this.roundClientApi.startRound({
+      roomId,
+      userId: '',
+      skipDrawerCheck: true,
+    });
+
+    if (result.isFailure()) {
+      this.logger.warn(`autoStartNextRound failed for room ${roomId}: ${result.error}`);
+      this.server.to(roomId).emit('error', { error: `autoStartNextRound: ${result.error}` });
+      return;
+    }
+
+    const word = result.data!.round.word;
+    const wordLength = word.length;
+    const timerSeconds = Math.floor(this.ROUND_MS / 1000);
+    const roundStartedBase = {
+      roomId,
+      roundId: result.data!.round.id,
+      roundNo: result.data!.round.roundNo,
+      drawerId: result.data!.drawerId,
+      wordLength,
+      timerSeconds,
+    };
+
+    // Find the drawer's socket to send the word only to them
+    const drawerSocketId = [...this.socketMeta.entries()]
+      .find(([, meta]) => meta.roomId === roomId && meta.playerId === result.data!.drawerId)?.[0];
+
+    if (drawerSocketId) {
+      this.server.to(roomId).except(drawerSocketId).emit('roundStarted', roundStartedBase);
+      this.server.to(drawerSocketId).emit('roundStarted', { ...roundStartedBase, word });
+    } else {
+      // Fallback: broadcast without word if drawer socket not found
+      this.server.to(roomId).emit('roundStarted', roundStartedBase);
+    }
+
+    this.timerService.start(roomId, this.ROUND_MS, () => this.autoCompleteRound(roomId));
   }
 
   @SubscribeMessage('applyStroke')
@@ -297,7 +351,7 @@ export class GameGateway
       style: data.style,
     });
 
-    return { event: 'strokeApplied', data: { strokeId: result.data!.stroke.id } };
+    return { event: 'strokeApplied', data: { strokeId: result.data!.stroke.id, points: data.points, style: data.style } };
   }
 
   @SubscribeMessage('undoStroke')
@@ -383,6 +437,10 @@ export class GameGateway
         playerId: data.playerId,
         pointsAwarded: result.data!.pointsAwarded,
       });
+
+      if (result.data!.allGuessersCorrect) {
+        await this.autoCompleteRound(data.roomId);
+      }
     }
 
     return {

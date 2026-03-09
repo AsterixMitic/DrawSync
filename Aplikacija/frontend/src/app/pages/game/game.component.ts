@@ -18,11 +18,13 @@ import { GameService, GameState, StrokeData } from '../../services/game.service'
 export class GameComponent implements OnInit, OnDestroy {
   private canvasEl!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
+  private resizeObserver!: ResizeObserver;
 
   @ViewChild('canvas') set canvasSetter(el: ElementRef<HTMLCanvasElement>) {
     if (el) {
       this.canvasEl = el.nativeElement;
       this.ctx = this.canvasEl.getContext('2d')!;
+      this.setupResizeObserver();
     }
   }
 
@@ -38,6 +40,9 @@ export class GameComponent implements OnInit, OnDestroy {
   // Drawing tool settings
   color = '#000000';
   lineWidth = 4;
+  eraserMode = false;
+
+  get effectiveColor(): string { return this.eraserMode ? '#ffffff' : this.color; }
 
   constructor(
     private route: ActivatedRoute,
@@ -71,7 +76,9 @@ export class GameComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
-    this.game.disconnect();
+    this.resizeObserver?.disconnect();
+    this.game.leaveRoom();
+    setTimeout(() => this.game.disconnect(), 150);
   }
 
   // ── Game actions ──────────────────────────────────────────────
@@ -80,13 +87,20 @@ export class GameComponent implements OnInit, OnDestroy {
   get isDrawer(): boolean { return this.state?.myPlayerId === this.state?.drawerId; }
   get isNextDrawer(): boolean { return this.state?.myPlayerId === this.state?.nextDrawerId; }
 
+  get wordUnderscores(): number[] {
+    return Array.from({ length: this.state?.wordLength ?? 0 }, (_, i) => i);
+  }
+
   startGame(): void { this.game.startGame(); }
   startRound(): void { this.game.startRound(); }
   completeRound(): void { this.game.completeRound(); }
 
   leaveRoom(): void {
-    this.game.disconnect();
-    this.router.navigate(['/home']);
+    this.game.leaveRoom();
+    setTimeout(() => {
+      this.game.disconnect();
+      this.router.navigate(['/home']);
+    }, 150);
   }
 
   submitGuess(): void {
@@ -103,6 +117,8 @@ export class GameComponent implements OnInit, OnDestroy {
     this.currentPoints = [this.getPos(e)];
   }
 
+  private readonly STROKE_FLUSH_THRESHOLD = 6;
+
   onMouseMove(e: MouseEvent): void {
     if (!this.drawing || !this.isDrawer) return;
     const pt = this.getPos(e);
@@ -110,15 +126,27 @@ export class GameComponent implements OnInit, OnDestroy {
     // Draw preview locally
     if (this.currentPoints.length >= 2) {
       const pts = this.currentPoints;
-      this.drawLine(pts[pts.length - 2], pts[pts.length - 1], this.color, this.lineWidth);
+      this.drawLine(
+        this.toPixel(pts[pts.length - 2]),
+        this.toPixel(pts[pts.length - 1]),
+        this.effectiveColor,
+        this.lineWidth,
+      );
+    }
+    // Send partial stroke periodically for real-time feel
+    if (this.currentPoints.length >= this.STROKE_FLUSH_THRESHOLD) {
+      this.game.applyStroke(this.currentPoints, { color: this.effectiveColor, lineWidth: this.lineWidth, lineCap: 'round' });
+      // Keep last point so next chunk connects seamlessly
+      this.currentPoints = [this.currentPoints[this.currentPoints.length - 1]];
     }
   }
 
   onMouseUp(): void {
     if (!this.drawing) return;
     this.drawing = false;
+    // Send remaining points
     if (this.currentPoints.length >= 2) {
-      this.game.applyStroke(this.currentPoints, { color: this.color, lineWidth: this.lineWidth, lineCap: 'round' });
+      this.game.applyStroke(this.currentPoints, { color: this.effectiveColor, lineWidth: this.lineWidth, lineCap: 'round' });
     }
     this.currentPoints = [];
   }
@@ -133,10 +161,43 @@ export class GameComponent implements OnInit, OnDestroy {
 
   onClearCanvas(): void { this.game.clearCanvas(); }
 
+  // ── Coordinate helpers ────────────────────────────────────────
+
+  /** Returns normalized 0–1 coords relative to canvas size. */
   private getPos(e: MouseEvent): { x: number; y: number } {
     const rect = this.canvasEl.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    return {
+      x: (e.clientX - rect.left) / this.canvasEl.width,
+      y: (e.clientY - rect.top) / this.canvasEl.height,
+    };
   }
+
+  /** Converts normalized 0–1 coords to pixel coords for the current canvas size. */
+  private toPixel(pt: { x: number; y: number }): { x: number; y: number } {
+    return { x: pt.x * this.canvasEl.width, y: pt.y * this.canvasEl.height };
+  }
+
+  // ── Responsive canvas ─────────────────────────────────────────
+
+  private setupResizeObserver(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = new ResizeObserver(() => {
+      this.fitCanvas();
+      this.redrawAll();
+    });
+    const container = this.canvasEl.parentElement!;
+    this.resizeObserver.observe(container);
+    this.fitCanvas();
+  }
+
+  private fitCanvas(): void {
+    if (!this.canvasEl?.parentElement) return;
+    const container = this.canvasEl.parentElement;
+    this.canvasEl.width = container.clientWidth;
+    this.canvasEl.height = container.clientHeight;
+  }
+
+  // ── Drawing ───────────────────────────────────────────────────
 
   private drawLine(a: { x: number; y: number }, b: { x: number; y: number }, color: string, width: number): void {
     this.ctx.beginPath();
@@ -152,7 +213,7 @@ export class GameComponent implements OnInit, OnDestroy {
   private drawStroke(d: StrokeData): void {
     if (d.points.length < 2) return;
     for (let i = 1; i < d.points.length; i++) {
-      this.drawLine(d.points[i - 1], d.points[i], d.style.color, d.style.lineWidth);
+      this.drawLine(this.toPixel(d.points[i - 1]), this.toPixel(d.points[i]), d.style.color, d.style.lineWidth);
     }
   }
 
@@ -169,7 +230,7 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   playerName(playerId: string): string {
-    // Display userId shortened if no name available
-    return playerId.slice(0, 8) + '…';
+    const p = this.state?.players?.find(pl => pl.playerId === playerId);
+    return p?.name ?? (p?.userId?.slice(0, 8) + '…') ?? (playerId.slice(0, 8) + '…');
   }
 }

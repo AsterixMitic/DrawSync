@@ -7,6 +7,7 @@ export interface StartRoundRequest {
   roomId: string;
   word?: string;
   userId: string;
+  skipDrawerCheck?: boolean;
 }
 
 export interface CompleteRoundRequest {
@@ -28,6 +29,7 @@ export class RoundClientApi {
       roomId: request.roomId,
       word: request.word,
       userId: request.userId,
+      skipDrawerCheck: request.skipDrawerCheck,
     });
 
     if (result.isSuccess() && result.data?.events?.length) {

@@ -20,7 +20,7 @@ export class Room {
   private readonly _id: string;
   private _status: RoomStatus;
   private readonly _createdAt: Date;
-  private readonly _roundCount: number;
+  private _roundCount: number;
   private readonly _playerMaxCount: number;
   private _roomOwnerId: string;
   private _currentRoundId: string | null;
@@ -206,6 +206,8 @@ export class Room {
     if (this._players.length < 2) {
       throw new Error('Need at least 2 players to start');
     }
+    // Each player draws roundCount times, alternating
+    this._roundCount = this._roundCount * this._players.length;
     this._status = RoomStatus.IN_PROGRESS;
   }
 

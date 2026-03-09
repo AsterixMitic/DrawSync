@@ -6,13 +6,13 @@ import type { ITokenProviderPort } from '../../domain/ports';
 export class TokenProviderAdapter implements ITokenProviderPort {
   constructor(private readonly jwtService: JwtService) {}
 
-  sign(payload: { userId: string; email: string }): string {
+  sign(payload: { userId: string; email: string; name: string }): string {
     return this.jwtService.sign(payload);
   }
 
-  verify(token: string): { userId: string; email: string } | null {
+  verify(token: string): { userId: string; email: string; name: string } | null {
     try {
-      return this.jwtService.verify(token) as { userId: string; email: string };
+      return this.jwtService.verify(token) as { userId: string; email: string; name: string };
     } catch {
       return null;
     }

@@ -48,7 +48,8 @@ export class AuthClientApi {
     if (result.isSuccess() && result.data) {
       const token = this.tokenProvider.sign({
         userId: result.data.user.id,
-        email: result.data.user.email
+        email: result.data.user.email,
+        name: result.data.user.name,
       });
       return Result.ok<LoginResultData>({
         user: result.data.user,

@@ -1,3 +1,4 @@
+export * from './create-room.operation.port';
 export * from './save-room.operation.port';
 export * from './save-player.operation.port';
 export * from './remove-player.operation.port';

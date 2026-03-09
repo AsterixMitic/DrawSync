@@ -6,6 +6,7 @@ import type { IRoomRepositoryPort, ISharedStatePort, ISaveRoomOperationPort } fr
 
 export interface StartGameInput {
   roomId: string;
+  userId: string;
 }
 
 @Injectable()
@@ -27,6 +28,11 @@ export class StartGameCommand {
     const room = await this.roomRepo.findByIdWithPlayers(input.roomId);
     if (!room) {
       return Result.fail('Room not found', 'NOT_FOUND');
+    }
+
+    const callerPlayer = room.players.find(p => p.userId === input.userId);
+    if (!callerPlayer || callerPlayer.playerId !== room.roomOwnerId) {
+      return Result.fail('Only the room owner can start the game', 'UNAUTHORIZED');
     }
 
     try {
@@ -55,6 +61,7 @@ export class StartGameCommand {
 
     return Result.ok<StartGameResultData>({
       room,
+      nextDrawerId: room.nextDrawer?.playerId ?? null,
       events
     });
   }

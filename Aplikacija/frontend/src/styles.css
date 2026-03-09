@@ -1,1 +1,53 @@
-/* You can add global styles to this file, and also import other style files */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+a { color: #7c83fd; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, textarea, select {
+  background: #2a2a3e;
+  border: 1px solid #3a3a5e;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  padding: 8px 12px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+input:focus, textarea:focus { border-color: #7c83fd; }
+
+button {
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 20px;
+  transition: opacity 0.2s, transform 0.1s;
+}
+button:hover { opacity: 0.88; }
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-primary  { background: #7c83fd; color: #fff; }
+.btn-secondary{ background: #3a3a5e; color: #e0e0e0; }
+.btn-danger   { background: #e05c5c; color: #fff; }
+.btn-success  { background: #4caf80; color: #fff; }
+
+.card {
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.error-msg { color: #e05c5c; font-size: 13px; margin-top: 6px; }
+.label { font-size: 13px; color: #aaa; margin-bottom: 4px; display: block; }
+.field { margin-bottom: 16px; }

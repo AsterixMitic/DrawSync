@@ -7,6 +7,7 @@ export interface LeaveRoomResultData {
   removedPlayer: Player;
   newOwnerId: string | null;
   roomDeleted: boolean;
+  wasDrawer: boolean;
   events: DomainEvent[];
 }
 

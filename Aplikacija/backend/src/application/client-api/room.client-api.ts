@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RoomDomainApi } from '../../domain/api';
-import { CreateRoomResult, JoinRoomResult, LeaveRoomResult } from '../../domain/results';
+import { CreateRoomResult, JoinRoomResult, LeaveRoomResult, ResetRoomResult } from '../../domain/results';
 import type { IEventPublisherPort } from '../../domain/ports';
 import { StartGameWorkflow, StartGameResultData } from '../workflows/start-game.workflow';
 import { Result } from '../../domain/results/base.result';
@@ -23,7 +23,13 @@ export interface LeaveRoomRequest {
 
 export interface StartGameRequest {
   roomId: string;
-  words: string[];
+  userId: string;
+  words?: string[];
+}
+
+export interface ResetRoomRequest {
+  roomId: string;
+  userId: string;
 }
 
 @Injectable()
@@ -78,7 +84,7 @@ export class RoomClientApi {
   async startGame(request: StartGameRequest): Promise<Result<StartGameResultData>> {
     const result = await this.startGameWorkflow.execute({
       roomId: request.roomId,
-      words: request.words
+      userId: request.userId,
     });
 
     if (result.isSuccess() && result.data?.events?.length) {
@@ -86,5 +92,12 @@ export class RoomClientApi {
     }
 
     return result;
+  }
+
+  async resetRoom(request: ResetRoomRequest): Promise<ResetRoomResult> {
+    return this.roomDomainApi.resetRoom({
+      roomId: request.roomId,
+      userId: request.userId,
+    });
   }
 }

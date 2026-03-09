@@ -1,0 +1,32 @@
+.auth-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card { width: 100%; max-width: 400px; }
+
+.logo { font-size: 32px; font-weight: 800; color: #7c83fd; text-align: center; letter-spacing: -1px; }
+.subtitle { text-align: center; color: #888; margin-bottom: 28px; font-size: 14px; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: #0f0f1e;
+  border-radius: 8px;
+  padding: 4px;
+}
+.tabs button {
+  flex: 1;
+  background: transparent;
+  color: #888;
+  padding: 8px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+.tabs button.active { background: #7c83fd; color: #fff; }
+
+.full { width: 100%; margin-top: 4px; padding: 10px; font-size: 15px; }

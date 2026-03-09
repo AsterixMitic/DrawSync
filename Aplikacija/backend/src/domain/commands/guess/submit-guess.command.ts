@@ -6,6 +6,7 @@ import { CorrectGuessEvent, GuessSubmittedEvent } from '../../events';
 import type { DomainEvent } from '../../events';
 import type {
   IPlayerRepositoryPort,
+  IRoomRepositoryPort,
   IRoundRepositoryPort,
   ISaveGuessOperationPort,
   IUpdatePlayerScoreOperationPort,
@@ -25,6 +26,8 @@ export class SubmitGuessCommand {
     private readonly roundRepo: IRoundRepositoryPort,
     @Inject('IPlayerRepositoryPort')
     private readonly playerRepo: IPlayerRepositoryPort,
+    @Inject('IRoomRepositoryPort')
+    private readonly roomRepo: IRoomRepositoryPort,
     @Inject('ISaveGuessOperationPort')
     private readonly saveGuessOp: ISaveGuessOperationPort,
     @Inject('IUpdatePlayerScoreOperationPort')
@@ -111,10 +114,21 @@ export class SubmitGuessCommand {
       return Result.fail(`Failed to persist guess: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
     }
 
+    // Finish round if everybody guessed corectlly
+    let allGuessed = false;
+    if (isCorrect) {
+      const room = await this.roomRepo.findByIdWithPlayers(round.roomId);
+      if (room) {
+        const nonDrawerCount = room.players.length - 1;
+        allGuessed = round.correctGuesses.length >= nonDrawerCount;
+      }
+    }
+
     return Result.ok<SubmitGuessResultData>({
       guess,
       isCorrect,
       pointsAwarded,
+      allGuessed,
       events
     });
   }

@@ -6,7 +6,8 @@ export class RoundCompletedEvent extends DomainEvent {
     public readonly roundId: string,
     public readonly roundNo: number,
     public readonly isGameFinished: boolean,
-    public readonly drawerPoints: number = 0
+    public readonly drawerPoints: number = 0,
+    public readonly drawerId: string | null = null
   ) {
     super('ROUND_COMPLETED');
   }
@@ -17,7 +18,8 @@ export class RoundCompletedEvent extends DomainEvent {
       roundId: this.roundId,
       roundNo: this.roundNo,
       isGameFinished: this.isGameFinished,
-      drawerPoints: this.drawerPoints
+      drawerPoints: this.drawerPoints,
+      drawerId: this.drawerId
     };
   }
 }

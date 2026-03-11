@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { ITokenProviderPort } from '../../domain/ports';
+import type { ITokenProviderPort } from '../../domain';
 
 @Injectable()
 export class TokenProviderAdapter implements ITokenProviderPort {

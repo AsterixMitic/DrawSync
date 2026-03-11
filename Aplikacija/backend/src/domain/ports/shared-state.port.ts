@@ -16,4 +16,15 @@ export interface ISharedStatePort {
   addActivePlayer(roomId: string, playerId: string): Promise<void>;
   removeActivePlayer(roomId: string, playerId: string): Promise<void>;
   deleteRoomState(roomId: string): Promise<void>;
+
+  // Stroke stack (for undo support without DB reads)
+  pushStrokeId(roomId: string, strokeId: string): Promise<void>;
+  popStrokeId(roomId: string): Promise<string | null>;
+  clearStrokeIds(roomId: string): Promise<void>;
+
+  // Correct guessers (for duplicate guess check without DB reads)
+  addCorrectGuesser(roomId: string, playerId: string): Promise<void>;
+  hasCorrectGuesser(roomId: string, playerId: string): Promise<boolean>;
+  getCorrectGuesserCount(roomId: string): Promise<number>;
+  clearCorrectGuessers(roomId: string): Promise<void>;
 }

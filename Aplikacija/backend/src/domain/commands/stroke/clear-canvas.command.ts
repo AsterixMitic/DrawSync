@@ -1,10 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { RoundStatus, StrokeType } from '../../enums';
-import { StrokeEvent } from '../../models';
+import { RoundStatus } from '../../enums';
 import { CanvasClearedEvent } from '../../events';
 import { Result } from '../../results/base.result';
 import { ClearCanvasResult, ClearCanvasResultData } from '../../results';
-import type { IRoundRepositoryPort, ISharedStatePort, ISaveStrokeEventOperationPort } from '../../ports';
+import type { ISharedStatePort } from '../../ports';
 
 export interface ClearCanvasInput {
   roomId: string;
@@ -14,12 +13,8 @@ export interface ClearCanvasInput {
 @Injectable()
 export class ClearCanvasCommand {
   constructor(
-    @Inject('IRoundRepositoryPort')
-    private readonly roundRepo: IRoundRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    @Inject('ISaveStrokeEventOperationPort')
-    private readonly saveStrokeEventOp: ISaveStrokeEventOperationPort
   ) {}
 
   async execute(input: ClearCanvasInput): Promise<ClearCanvasResult> {
@@ -40,36 +35,12 @@ export class ClearCanvasCommand {
       return Result.fail('Cannot clear canvas when round is not active', 'INVALID_STATE');
     }
 
-    const round = await this.roundRepo.findById(roomState.currentRoundId ?? '');
-    if (!round) {
-      return Result.fail('Round not found', 'NOT_FOUND');
-    }
-    if (!round.isActive) {
-      return Result.fail('Round is not active', 'INVALID_STATE');
-    }
-
-    round.clearCanvas();
-
-    const seq = await this.roundRepo.getNextSeqForRound(round.id);
-    const strokeEvent = new StrokeEvent({
-      roundId: round.id,
-      seq,
-      strokeType: StrokeType.CLEAR
-    });
+    await this.sharedState.clearStrokeIds(input.roomId);
 
     const events = [
-      new CanvasClearedEvent(round.id, input.playerId)
+      new CanvasClearedEvent(roomState.currentRoundId!, input.playerId)
     ];
 
-    try {
-      await this.saveStrokeEventOp.execute({ strokeEvent });
-    } catch (error: any) {
-      return Result.fail(`Failed to persist stroke event: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
-    }
-
-    return Result.ok<ClearCanvasResultData>({
-      strokeEvent,
-      events
-    });
+    return Result.ok<ClearCanvasResultData>({ events });
   }
 }

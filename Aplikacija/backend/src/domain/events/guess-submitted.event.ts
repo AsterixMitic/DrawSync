@@ -17,7 +17,7 @@ export class GuessSubmittedEvent extends DomainEvent {
       roundId: this.roundId,
       guessId: this.guessId,
       playerId: this.playerId,
-      guessText: this.isCorrect ? '[CORRECT]' : this.guessText, // Ne otkrivaj tačan odgovor
+      guessText: this.guessText,
       isCorrect: this.isCorrect,
       pointsAwarded: this.pointsAwarded
     };

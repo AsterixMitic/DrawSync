@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ChannelWrapper } from 'amqp-connection-manager';
-import { DomainEvent } from '../../domain/events';
-import type { IEventPublisherPort } from '../../domain/ports';
+import { DomainEvent } from '../../domain';
+import type { IEventPublisherPort } from '../../domain';
 import { RABBITMQ_CHANNEL } from '../messaging/rabbitmq-connection.provider';
 import {
   RABBITMQ_EXCHANGE,

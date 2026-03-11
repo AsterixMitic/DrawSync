@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
-import { ISharedStatePort, RoomState } from '../../domain/ports';
+import { ISharedStatePort, RoomState } from '../../domain';
 
 @Injectable()
 export class SharedStateAdapter implements ISharedStatePort, OnModuleDestroy {
@@ -57,6 +57,50 @@ export class SharedStateAdapter implements ISharedStatePort, OnModuleDestroy {
 
   async deleteRoomState(roomId: string): Promise<void> {
     await this.redis.del(this.key(roomId));
+    await this.redis.del(this.strokeKey(roomId));
+    await this.redis.del(this.guesserKey(roomId));
+  }
+
+  // ── Stroke stack (Redis List) ──────────────────────────────────
+
+  private strokeKey(roomId: string): string {
+    return `drawsync:room:${roomId}:strokes`;
+  }
+
+  async pushStrokeId(roomId: string, strokeId: string): Promise<void> {
+    await this.redis.rpush(this.strokeKey(roomId), strokeId);
+    await this.redis.expire(this.strokeKey(roomId), 86400);
+  }
+
+  async popStrokeId(roomId: string): Promise<string | null> {
+    return this.redis.rpop(this.strokeKey(roomId));
+  }
+
+  async clearStrokeIds(roomId: string): Promise<void> {
+    await this.redis.del(this.strokeKey(roomId));
+  }
+
+  // ── Correct guessers (Redis Set) ──────────────────────────────
+
+  private guesserKey(roomId: string): string {
+    return `drawsync:room:${roomId}:guessers`;
+  }
+
+  async addCorrectGuesser(roomId: string, playerId: string): Promise<void> {
+    await this.redis.sadd(this.guesserKey(roomId), playerId);
+    await this.redis.expire(this.guesserKey(roomId), 86400);
+  }
+
+  async hasCorrectGuesser(roomId: string, playerId: string): Promise<boolean> {
+    return (await this.redis.sismember(this.guesserKey(roomId), playerId)) === 1;
+  }
+
+  async getCorrectGuesserCount(roomId: string): Promise<number> {
+    return this.redis.scard(this.guesserKey(roomId));
+  }
+
+  async clearCorrectGuessers(roomId: string): Promise<void> {
+    await this.redis.del(this.guesserKey(roomId));
   }
 
   async onModuleDestroy(): Promise<void> {

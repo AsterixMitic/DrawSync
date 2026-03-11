@@ -7,9 +7,7 @@ import type { DomainEvent } from '../../events';
 import type {
   IPlayerRepositoryPort,
   IRoundRepositoryPort,
-  ISaveGuessOperationPort,
-  IUpdatePlayerScoreOperationPort,
-  IUpdateUserScoreOperationPort
+  ISharedStatePort
 } from '../../ports';
 
 export interface SubmitGuessInput {
@@ -25,12 +23,8 @@ export class SubmitGuessCommand {
     private readonly roundRepo: IRoundRepositoryPort,
     @Inject('IPlayerRepositoryPort')
     private readonly playerRepo: IPlayerRepositoryPort,
-    @Inject('ISaveGuessOperationPort')
-    private readonly saveGuessOp: ISaveGuessOperationPort,
-    @Inject('IUpdatePlayerScoreOperationPort')
-    private readonly updatePlayerScoreOp: IUpdatePlayerScoreOperationPort,
-    @Inject('IUpdateUserScoreOperationPort')
-    private readonly updateUserScoreOp: IUpdateUserScoreOperationPort
+    @Inject('ISharedStatePort')
+    private readonly sharedState: ISharedStatePort,
   ) {}
 
   async execute(input: SubmitGuessInput): Promise<SubmitGuessResult> {
@@ -44,12 +38,12 @@ export class SubmitGuessCommand {
       return Result.fail('Guess text is required', 'VALIDATION_ERROR');
     }
 
-    const round = await this.roundRepo.findByIdWithGuesses(input.roundId);
+    const round = await this.roundRepo.findById(input.roundId);
     if (!round) {
       return Result.fail('Round not found', 'NOT_FOUND');
     }
 
-    const player = await this.playerRepo.findByIdWithUser(input.playerId);
+    const player = await this.playerRepo.findById(input.playerId);
     if (!player) {
       return Result.fail('Player not found', 'NOT_FOUND');
     }
@@ -62,7 +56,7 @@ export class SubmitGuessCommand {
       return Result.fail('Drawer cannot guess', 'NOT_AUTHORIZED');
     }
 
-    const alreadyGuessed = await this.playerRepo.hasPlayerGuessedCorrectly(input.roundId, input.playerId);
+    const alreadyGuessed = await this.sharedState.hasCorrectGuesser(round.roomId, input.playerId);
     if (alreadyGuessed) {
       return Result.fail('Player has already guessed correctly', 'ALREADY_GUESSED');
     }
@@ -83,12 +77,14 @@ export class SubmitGuessCommand {
     let pointsAwarded = 0;
     let allGuessersCorrect = false;
     if (isCorrect) {
-      const correctGuessCount = round.correctGuesses.length - 1;
-      pointsAwarded = this.calculatePoints(Math.max(correctGuessCount, 0));
+      const previousCorrectCount = await this.sharedState.getCorrectGuesserCount(round.roomId);
+      pointsAwarded = this.calculatePoints(previousCorrectCount);
+
+      await this.sharedState.addCorrectGuesser(round.roomId, input.playerId);
 
       const roomPlayers = await this.playerRepo.findByRoomId(round.roomId);
       const guesserCount = roomPlayers.filter(p => p.playerId !== round.currentDrawerId).length;
-      allGuessersCorrect = round.correctGuesses.length >= guesserCount;
+      allGuessersCorrect = (previousCorrectCount + 1) >= guesserCount;
     }
 
     const events: DomainEvent[] = [
@@ -104,16 +100,6 @@ export class SubmitGuessCommand {
 
     if (isCorrect) {
       events.push(new CorrectGuessEvent(round.id, input.playerId, pointsAwarded));
-    }
-
-    try {
-      await this.saveGuessOp.execute({ guess });
-      if (isCorrect && pointsAwarded > 0) {
-        await this.updatePlayerScoreOp.execute({ playerId: input.playerId, points: pointsAwarded });
-        await this.updateUserScoreOp.execute({ userId: player.userId, points: pointsAwarded });
-      }
-    } catch (error: any) {
-      return Result.fail(`Failed to persist guess: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
     }
 
     return Result.ok<SubmitGuessResultData>({

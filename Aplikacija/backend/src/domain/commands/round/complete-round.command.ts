@@ -5,13 +5,10 @@ import { CompleteRoundResult, CompleteRoundResultData } from '../../results';
 import { RoundCompletedEvent } from '../../events';
 import type {
   IRoomRepositoryPort,
-  IRoundRepositoryPort,
   ISharedStatePort,
   ISaveRoomOperationPort,
-  IUpdateRoundStatusOperationPort,
   ISavePlayerOperationPort,
-  IUpdatePlayerScoreOperationPort,
-  IUpdateUserScoreOperationPort
+  IUpdateRoundStatusOperationPort,
 } from '../../ports';
 
 export interface CompleteRoundInput {
@@ -25,20 +22,14 @@ export class CompleteRoundCommand {
   constructor(
     @Inject('IRoomRepositoryPort')
     private readonly roomRepo: IRoomRepositoryPort,
-    @Inject('IRoundRepositoryPort')
-    private readonly roundRepo: IRoundRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
     @Inject('ISaveRoomOperationPort')
     private readonly saveRoomOp: ISaveRoomOperationPort,
-    @Inject('IUpdateRoundStatusOperationPort')
-    private readonly updateRoundStatusOp: IUpdateRoundStatusOperationPort,
     @Inject('ISavePlayerOperationPort')
     private readonly savePlayerOp: ISavePlayerOperationPort,
-    @Inject('IUpdatePlayerScoreOperationPort')
-    private readonly updatePlayerScoreOp: IUpdatePlayerScoreOperationPort,
-    @Inject('IUpdateUserScoreOperationPort')
-    private readonly updateUserScoreOp: IUpdateUserScoreOperationPort
+    @Inject('IUpdateRoundStatusOperationPort')
+    private readonly updateRoundStatusOp: IUpdateRoundStatusOperationPort,
   ) {}
 
   async execute(input: CompleteRoundInput): Promise<CompleteRoundResult> {
@@ -75,34 +66,34 @@ export class CompleteRoundCommand {
 
     const isGameFinished = room.status === RoomStatus.FINISHED;
 
-    // Compute drawer points based on how many players guessed correctly
-    const roundWithGuesses = await this.roundRepo.findByIdWithGuesses(activeRound.id);
-    const correctGuessCount = roundWithGuesses?.correctGuesses.length ?? 0;
+    // Compute drawer points from Redis (async guesses not yet in DB)
+    const correctGuessCount = await this.sharedState.getCorrectGuesserCount(input.roomId);
     const drawerPoints = Math.min(correctGuessCount * 30, 90);
     const drawer = room.players.find(p => p.playerId === activeRound.currentDrawerId) ?? null;
 
     const events = [
-      new RoundCompletedEvent(room.id, activeRound.id, activeRound.roundNo, isGameFinished, drawerPoints)
+      new RoundCompletedEvent(
+        room.id,
+        activeRound.id,
+        activeRound.roundNo,
+        isGameFinished,
+        drawerPoints,
+        drawer?.playerId ?? null
+      )
     ];
 
     try {
-      await this.updateRoundStatusOp.execute({
-        roundId: activeRound.id,
-        status: activeRound.status
-      });
+      await this.updateRoundStatusOp.execute({ roundId: activeRound.id, status: activeRound.status });
       await this.saveRoomOp.execute({ room });
-
-      // Award drawer points if any guessers were correct
-      if (drawerPoints > 0 && drawer) {
-        await this.updatePlayerScoreOp.execute({ playerId: drawer.playerId, points: drawerPoints });
-        await this.updateUserScoreOp.execute({ userId: drawer.userId, points: drawerPoints });
-      }
 
       if (isGameFinished) {
         for (const player of room.players) {
           await this.savePlayerOp.execute({ player });
         }
       }
+
+      await this.sharedState.clearStrokeIds(input.roomId);
+      await this.sharedState.clearCorrectGuessers(input.roomId);
       await this.sharedState.setRoomState({
         roomId: room.id,
         status: room.status,

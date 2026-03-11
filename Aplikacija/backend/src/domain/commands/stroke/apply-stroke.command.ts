@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Stroke, StrokeEvent } from '../../models';
+import { Stroke } from '../../models';
 import { StrokePoint, StrokeStyle } from '../../value-objects';
-import { RoundStatus, StrokeType } from '../../enums';
+import { RoundStatus } from '../../enums';
 import { ApplyStrokeResult, ApplyStrokeResultData } from '../../results';
 import { Result } from '../../results/base.result';
 import { StrokeAppliedEvent } from '../../events';
-import type { IRoundRepositoryPort, ISharedStatePort, ISaveStrokeOperationPort, ISaveStrokeEventOperationPort } from '../../ports';
+import type { ISharedStatePort } from '../../ports';
 
 export interface ApplyStrokeInput {
   roomId: string;
@@ -17,14 +17,8 @@ export interface ApplyStrokeInput {
 @Injectable()
 export class ApplyStrokeCommand {
   constructor(
-    @Inject('IRoundRepositoryPort')
-    private readonly roundRepo: IRoundRepositoryPort,
     @Inject('ISharedStatePort')
     private readonly sharedState: ISharedStatePort,
-    @Inject('ISaveStrokeOperationPort')
-    private readonly saveStrokeOp: ISaveStrokeOperationPort,
-    @Inject('ISaveStrokeEventOperationPort')
-    private readonly saveStrokeEventOp: ISaveStrokeEventOperationPort
   ) {}
 
   async execute(input: ApplyStrokeInput): Promise<ApplyStrokeResult> {
@@ -46,49 +40,25 @@ export class ApplyStrokeCommand {
       return Result.fail('Cannot draw when round is not active', 'INVALID_STATE');
     }
 
-    const round = await this.roundRepo.findById(roomState.currentRoundId ?? '');
-    if (!round) {
-      return Result.fail('Round not found', 'NOT_FOUND');
-    }
-
     const stroke = new Stroke({
-      roundId: round.id,
+      roundId: roomState.currentRoundId!,
       points: input.points.map((p) => new StrokePoint(p)),
       style: new StrokeStyle(input.style)
     });
 
-    const seq = await this.roundRepo.getNextSeqForRound(round.id);
-
-    const strokeEvent = new StrokeEvent({
-      roundId: round.id,
-      seq,
-      strokeType: StrokeType.DRAW,
-      strokeId: stroke.id,
-      stroke
-    });
-
-    try {
-      round.addStroke(stroke);
-    } catch (error: any) {
-      return Result.fail(error?.message ?? 'Failed to add stroke', 'DOMAIN_ERROR');
-    }
+    await this.sharedState.pushStrokeId(input.roomId, stroke.id);
 
     const events = [
-      new StrokeAppliedEvent(round.id, stroke.id, input.playerId, stroke.points as StrokePoint[], stroke.style)
+      new StrokeAppliedEvent(
+        roomState.currentRoundId!,
+        stroke.id,
+        input.playerId,
+        stroke.points as StrokePoint[],
+        stroke.style
+      )
     ];
 
-    try {
-      await this.saveStrokeOp.execute({ stroke });
-      await this.saveStrokeEventOp.execute({ strokeEvent });
-    } catch (error: any) {
-      return Result.fail(`Failed to persist stroke: ${error?.message ?? error}`, 'PERSISTENCE_ERROR');
-    }
-
-    return Result.ok<ApplyStrokeResultData>({
-      stroke,
-      strokeEvent,
-      events
-    });
+    return Result.ok<ApplyStrokeResultData>({ stroke, events });
   }
 
   private validateInput(input: ApplyStrokeInput): string | null {

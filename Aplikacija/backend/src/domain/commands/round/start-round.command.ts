@@ -95,6 +95,8 @@ export class StartRoundCommand {
       for (const player of room.players) {
         await this.savePlayerOp.execute({ player });
       }
+      await this.sharedState.clearStrokeIds(room.id);
+      await this.sharedState.clearCorrectGuessers(room.id);
       await this.sharedState.setRoomState({
         roomId: room.id,
         status: room.status,
